@@ -416,7 +416,5 @@ private:
 	float CurrentAimingMovementSpeed;
 #pragma endregion Aim
 	
-	//TArray<AInteractiveActor*, TInlineAllocator<10>> AvaibleInteractiveActors;
-	
 	TArray<TWeakObjectPtr<AInteractiveActor>, TInlineAllocator<10>> AvaibleInteractiveActors;
 };

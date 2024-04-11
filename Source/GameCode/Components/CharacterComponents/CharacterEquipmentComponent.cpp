@@ -190,12 +190,6 @@ void UCharacterEquipmentComponent::SwitchAmmoSlot()
 		OnEquippedItemChanged.Broadcast(CurrentEquippedItem);
 	}
 	
-	if (GetOwner()->GetLocalRole() == ROLE_AutonomousProxy)
-	{
-		Server_EquipItemInSlot(CurrentEquippedSlot);
-	}
-
-	
 }
 
 void UCharacterEquipmentComponent::AttachCurrentItemToEquippedSocket()

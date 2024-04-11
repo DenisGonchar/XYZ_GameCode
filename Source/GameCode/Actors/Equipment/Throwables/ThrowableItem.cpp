@@ -2,14 +2,45 @@
 
 
 #include "ThrowableItem.h"
+
+#include "IDesktopPlatform.h"
 #include "Pawns/Character/GCBaseCharacter.h"
 #include "../../Projectiles/GCProjectile.h"
+#include "Net/UnrealNetwork.h"
 
 void AThrowableItem::BeginPlay()
 {
 	Super::BeginPlay();
 
+	if (GetLocalRole() < ROLE_Authority)
+	{
+		return;
+	}
+
+	if (!IsValid(ProjectileClass))
+	{
+		return;
+	}
+
+	ProjectilePool.Reserve(ProjectilePoolSize);
+	for (int32 i = 0; i < ProjectilePoolSize; ++i)
+	{
+		AGCProjectile* Projectile = GetWorld()->SpawnActor<AGCProjectile>(ProjectileClass, ProjectilePoolLocation, FRotator::ZeroRotator);
+		Projectile->SetOwner(GetCharacterOwner());
+		Projectile->SetProjectileActive(false);
+		ProjectilePool.Add(Projectile);
+	}
+	
 	SetThrowAmmo(MaxThrowAmmo);
+}
+
+void AThrowableItem::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME(AThrowableItem, ProjectilePool);
+	DOREPLIFETIME(AThrowableItem, CurrentProjectileIndex);
+	DOREPLIFETIME(AThrowableItem, ThrowAmmo);
 }
 
 void AThrowableItem::Throw()
@@ -34,9 +65,14 @@ void AThrowableItem::Throw()
 		FVector PlayerViewPoint;
 		FRotator PlayerViewRotation;
 
-		APlayerController* Controller = CharacterOwner->GetController<APlayerController>();
-		Controller->GetPlayerViewPoint(PlayerViewPoint, PlayerViewRotation);
+		
+		if(APlayerController* Controller = CharacterOwner->GetController<APlayerController>())
+		{
+			Controller->GetPlayerViewPoint(PlayerViewPoint, PlayerViewRotation);
+		}
 
+
+		
 		FTransform PlayerViewTransform(PlayerViewRotation, PlayerViewPoint);
 
 		FVector ViewDirection = PlayerViewRotation.RotateVector(FVector::ForwardVector);
@@ -57,18 +93,23 @@ void AThrowableItem::Throw()
 	}
 
 
-	AGCProjectile* Projectile = GetWorld()->SpawnActor<AGCProjectile>(ProjectileClass, SpawnLocation, FRotator::ZeroRotator);
-	if (IsValid(Projectile))
+	AGCProjectile* Projectile = ProjectilePool[CurrentProjectileIndex];
+	
+	Projectile->SetActorLocation(SpawnLocation);
+
+	Projectile->SetProjectileActive(true);
+	Projectile->OnProjectileHit.AddDynamic(this, &AThrowableItem::ProcessProjectileHit);
+	Projectile->LaunchProjectile(LaunchDirection.GetSafeNormal());
+
+	SetThrowAmmo(--ThrowAmmo);
+	
+	++CurrentProjectileIndex;
+	if (CurrentProjectileIndex == ProjectilePool.Num())
 	{
-		SetThrowAmmo(--ThrowAmmo);
-
-		Projectile->SetOwner(GetCharacterOwner());
-		Projectile->LaunchProjectile(LaunchDirection.GetSafeNormal());
-		Projectile->SetProjectileActive(true);
-
+		CurrentProjectileIndex = 0;
 	}
 
-
+	
 }
 
 void AThrowableItem::SetThrowAmmo(int32 NewAmmo)
@@ -79,4 +120,19 @@ void AThrowableItem::SetThrowAmmo(int32 NewAmmo)
 	{
 		OnThrowAmmoChanged.Broadcast(ThrowAmmo);
 	}
+}
+
+void AThrowableItem::OnRep_ThrowAmmo()
+{
+	SetThrowAmmo(ThrowAmmo);
+}
+
+void AThrowableItem::ProcessProjectileHit(AGCProjectile* Projectile, const FHitResult& HitResult,
+                                          const FVector& Direction)
+{
+	Projectile->SetProjectileActive(false);
+	Projectile->SetActorLocation(ProjectilePoolLocation);
+	Projectile->SetActorRotation(FRotator::ZeroRotator);
+	Projectile->OnProjectileHit.RemoveAll(this);
+
 }
