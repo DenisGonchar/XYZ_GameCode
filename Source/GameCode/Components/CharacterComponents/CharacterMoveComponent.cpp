@@ -1,0 +1,312 @@
+// Fill out your copyright notice in the Description page of Project Settings.
+
+
+#include "CharacterMoveComponent.h"
+
+#include "CharacterAttributeComponent.h"
+#include "Actors/Interactive/Environment/Ladder.h"
+#include "Actors/Interactive/Environment/Zipline.h"
+#include "Components/BoxComponent.h"
+#include "Components/CapsuleComponent.h"
+#include "Curves/CurveVector.h"
+#include "Net/UnrealNetwork.h"
+#include "Pawns/Character/GCBaseCharacter.h"
+#include "Pawns/Character/CharacterMovementComponent/GCBaseCharacterMovementComponent.h"
+#include "Components/LedgeDetectorComponent.h"
+
+UCharacterMoveComponent::UCharacterMoveComponent()
+{
+	PrimaryComponentTick.bCanEverTick = true;
+	SetIsReplicatedByDefault(true);
+}
+
+void UCharacterMoveComponent::BeginPlay()
+{
+	Super::BeginPlay();
+
+	CachedBaseCharacter = Cast<AGCBaseCharacter>(GetOwner());
+	
+	BaseTranslationOffset = CachedBaseCharacter->GetMesh()->GetRelativeLocation();
+
+	CurrentBaseCharacterMovementComponent = CachedBaseCharacter->GetBaseCharacterMovementComponent();
+	CurrentLedgeDetectorComponent = CachedBaseCharacter->GetLedgeDetectorComponent();
+	
+	CachedBaseCharacter->GetCapsuleComponent()->OnComponentHit.AddDynamic(this, &UCharacterMoveComponent::OnPlayrCapsuleHit);
+
+}
+
+void UCharacterMoveComponent::TickComponent(float DeltaTime, ELevelTick TickType,
+                                            FActorComponentTickFunction* ThisTickFunction)
+{
+	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+
+	if (CurrentBaseCharacterMovementComponent->IsOnZipline())
+	{
+		
+		ClimbZipline(1.0f);
+	}
+}
+
+void UCharacterMoveComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+	DOREPLIFETIME(UCharacterMoveComponent, bIsMantling);
+}
+
+void UCharacterMoveComponent::OnPlayrCapsuleHit(UPrimitiveComponent* HitComponent, AActor* OtherActor,
+                                                UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit)
+{
+	WallRun();
+}
+
+void UCharacterMoveComponent::Slide()
+{
+	if (CanSlide())
+	{
+		CurrentBaseCharacterMovementComponent->StartSlide();
+		
+		UAnimInstance* AnimInstance = CachedBaseCharacter->GetMesh()->GetAnimInstance();
+		CachedBaseCharacter->PlayAnimMontage(CurrentBaseCharacterMovementComponent->GetSlideAnimMontage());
+		
+	}
+}
+
+void UCharacterMoveComponent::StartSlide(float HalfHeightAbjust)
+{
+	if (CachedBaseCharacter->GetMesh())
+	{
+		FVector MeshRelativeLocation = CachedBaseCharacter->GetMesh()->GetRelativeLocation();
+		MeshRelativeLocation.Z = CachedBaseCharacter->GetMesh()->GetRelativeLocation().Z + HalfHeightAbjust;
+		BaseTranslationOffset.Z = MeshRelativeLocation.Z;
+		CachedBaseCharacter->GetMesh()->SetRelativeLocation(MeshRelativeLocation);
+
+	}
+	else
+	{
+		BaseTranslationOffset.Z = CachedBaseCharacter->GetBaseTranslationOffset().Z + HalfHeightAbjust;
+	}
+}
+
+void UCharacterMoveComponent::EndSlide(float HalfHeightAbjust)
+{
+	ACharacter* DefaultCharacter = CachedBaseCharacter->GetClass()->GetDefaultObject<ACharacter>();
+
+	if (CachedBaseCharacter->GetMesh())
+	{
+		FVector MeshRelativeLocation = CachedBaseCharacter->GetMesh()->GetRelativeLocation();
+		MeshRelativeLocation.Z = DefaultCharacter->GetMesh()->GetRelativeLocation().Z;
+		BaseTranslationOffset.Z = MeshRelativeLocation.Z - DefaultCharacter->GetMesh()->GetRelativeLocation().Z;
+		CachedBaseCharacter->GetMesh()->SetRelativeLocation(MeshRelativeLocation);
+
+	}
+}
+
+bool UCharacterMoveComponent::CanSlide()
+{
+	
+	return CurrentBaseCharacterMovementComponent->IsSprinting() &&
+		   !CurrentBaseCharacterMovementComponent->IsSliding();
+	
+}
+
+void UCharacterMoveComponent::WallRun()
+{
+	if (!CanWallRun())
+	{
+		return;
+	}
+
+	if (CurrentBaseCharacterMovementComponent->IsWallRuning())
+	{
+		CurrentBaseCharacterMovementComponent->JumpOffWall();
+			
+		return;
+	}
+
+	if (!CurrentBaseCharacterMovementComponent->IsFalling())
+	{
+		return;
+	}
+
+	CurrentBaseCharacterMovementComponent->AttachToWallRun();
+	
+}
+
+bool UCharacterMoveComponent::CanWallRun()
+{
+	return !CurrentBaseCharacterMovementComponent->IsMantling() && 
+ 			CurrentBaseCharacterMovementComponent->MovementMode != MOVE_Walking &&
+ 			CurrentBaseCharacterMovementComponent->MovementMode != MOVE_Swimming;
+}
+
+void UCharacterMoveComponent::ClimbZipline(float Value)
+{
+	if (CurrentBaseCharacterMovementComponent->IsOnZipline() && !FMath::IsNearlyZero(Value))
+	{
+		FVector ZiplineVector = CurrentBaseCharacterMovementComponent->GetCurrentZipline()->GetZiplineInteractionBox()->GetForwardVector();
+
+		CachedBaseCharacter->AddMovementInput(ZiplineVector, Value);
+	}
+}
+
+void UCharacterMoveComponent::InteractWithZipline()
+{
+	if (CurrentBaseCharacterMovementComponent->IsOnZipline())
+	{
+		CurrentBaseCharacterMovementComponent->DetachFromZipline(EDetachFromZiplineMethod::JumpOff);
+	}
+	else
+	{
+
+		const AZipline* AvailableZipline = GetAvailableZipline();
+		if (IsValid(AvailableZipline))
+		{
+			CurrentBaseCharacterMovementComponent->AttachToZipline(AvailableZipline);
+			
+		}
+	}
+}
+
+const class AZipline* UCharacterMoveComponent::GetAvailableZipline() const
+{
+	const AZipline* Result = nullptr;
+	
+	for (auto InteractiveActor : CachedBaseCharacter->GetAvaibleInteractiveActors())
+	{
+		if (InteractiveActor->IsA<AZipline>())
+		{
+			Result = Cast<AZipline>(InteractiveActor);
+			break;
+		}
+	}
+	return Result;
+}
+
+void UCharacterMoveComponent::ClimbLadderUp(float Value)
+{
+	
+	if (CurrentBaseCharacterMovementComponent && CurrentBaseCharacterMovementComponent->IsOnLadder() && !FMath::IsNearlyZero(Value))
+	{
+		FVector LadderUpVector =  CurrentBaseCharacterMovementComponent->GetCurrentLadder()->GetActorUpVector();
+		CachedBaseCharacter->AddMovementInput(LadderUpVector, Value);
+	}
+}
+
+void UCharacterMoveComponent::InteractWithLadder()
+{
+	if (CurrentBaseCharacterMovementComponent->IsOnLadder())
+	{
+		CurrentBaseCharacterMovementComponent->DetachFromLadder(EDetachFromLadderMethod::JumpOff);
+
+	}
+	else
+	{
+		const ALadder* AvailableLadder = GetAvailableLadder();
+		if (IsValid(AvailableLadder))
+		{
+			if (AvailableLadder->GetIsOnTop())
+			{
+				CachedBaseCharacter->PlayAnimMontage(AvailableLadder->GetAttachFromTopAnimMontage());
+			}
+			CurrentBaseCharacterMovementComponent->AttachToLadder(AvailableLadder);
+		}
+
+	}
+
+}
+
+const class ALadder* UCharacterMoveComponent::GetAvailableLadder() const
+{
+	const ALadder* Result = nullptr;
+	
+	for (auto InteractiveActor : CachedBaseCharacter->GetAvaibleInteractiveActors())
+	{
+		
+		if (InteractiveActor->IsA<ALadder>())
+		{
+			Result = Cast<const ALadder>(InteractiveActor);
+			break;
+		}
+	}
+
+	return Result;
+}
+
+
+void UCharacterMoveComponent::Mantle(bool bForce /*= false*/)
+{
+	if (!(CanMantle() || bForce))
+	{
+		return;
+	}
+
+	FLedgeDescription LedgeDescription;
+
+	if (CurrentLedgeDetectorComponent->DetectLedge(LedgeDescription) 
+			&& !(CurrentBaseCharacterMovementComponent->MovementMode == MOVE_Falling) /* && CanJumpInternal_Implementation()*/)
+	{	
+		bIsMantling = true;
+
+		FMantlingMovementParameters MantlingParameters;
+		MantlingParameters.MantlingCurve = HighMantleSettings.MantlingCurve;
+		MantlingParameters.InitialLocation = CachedBaseCharacter->GetActorLocation();
+		MantlingParameters.InitialRotation = CachedBaseCharacter->GetActorRotation();
+		MantlingParameters.TargetLocation = LedgeDescription.Location;
+		MantlingParameters.TargetRotation = LedgeDescription.Rotation;
+		MantlingParameters.PlatformMesh = LedgeDescription.PlatformStaticMesh;
+		MantlingParameters.PlatforMeshLocation = LedgeDescription.PlatformMeshTargetLLocation;
+
+		float BottomZOffset = 2.0f;
+		FVector CharacterBottom = MantlingParameters.InitialLocation - (CachedBaseCharacter->GetCapsuleComponent()->GetScaledCapsuleHalfHeight() - BottomZOffset) * FVector::UpVector;
+		
+		//float MantlingHeight = (MantlingParameters.TargetLocation - MantlingParameters.InitialLocation).Z;
+		float MantlingHeight = (LedgeDescription.LedgeHeight - CharacterBottom).Z;
+
+		const FMantlingSetting& MantlingSettings = GetMantlingSetting(MantlingHeight);
+
+		float MinRange;
+		float MaxRange;
+		MantlingSettings.MantlingCurve->GetTimeRange(MinRange, MaxRange);
+
+		MantlingParameters.Duration = MaxRange - MinRange;
+
+		MantlingParameters.MantlingCurve = MantlingSettings.MantlingCurve;
+
+		FVector2D SourceRange(MantlingSettings.MinHeight, MantlingSettings.MaxHeight);
+		FVector2D TargetRange(MantlingSettings.MinHeightStartTime, MantlingSettings.MaxHeightStartTime);
+		MantlingParameters.StartTime = FMath::GetMappedRangeValueClamped(SourceRange, TargetRange, MantlingHeight);
+		
+		MantlingParameters.InitialAnimationLocation = MantlingParameters.TargetLocation - MantlingSettings.AnimationCorrectionZ * FVector::UpVector + MantlingSettings.AnimationCorrectionXY * LedgeDescription.LedgeNormal;
+
+		if (CachedBaseCharacter->IsLocallyControlled() || CachedBaseCharacter->GetLocalRole() == ROLE_Authority)
+		{
+			CurrentBaseCharacterMovementComponent->StartMantle(MantlingParameters);
+		}
+		
+		UAnimInstance* AnimInstance = CachedBaseCharacter->GetMesh()->GetAnimInstance();
+		AnimInstance->Montage_Play(MantlingSettings.MantlingMontage, 1.0f, EMontagePlayReturnType::Duration, MantlingParameters.StartTime);
+
+		CachedBaseCharacter->OnMantle(MantlingSettings, MantlingParameters.StartTime);
+	
+	}
+
+}
+
+void UCharacterMoveComponent::OnRep_IsMantlong(bool bWasMantling)
+{
+	if (CachedBaseCharacter->GetLocalRole() == ROLE_SimulatedProxy && !bWasMantling && bIsMantling)
+	{
+		Mantle(true);
+	}
+}
+
+const FMantlingSetting& UCharacterMoveComponent::GetMantlingSetting(float LedgeHeight) const
+{
+	
+	return LedgeHeight > LowMantleMaxHeight ? HighMantleSettings : LowMantleSettings;
+}
+
+bool UCharacterMoveComponent::CanMantle() const
+{
+	return !CurrentBaseCharacterMovementComponent->IsOnLadder() && !CurrentBaseCharacterMovementComponent->IsOnZipline();
+}
