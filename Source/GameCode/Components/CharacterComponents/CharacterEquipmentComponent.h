@@ -45,6 +45,8 @@ public:
 	AThrowableItem* GetCurrentThrowableWeapon() const;
 	AMeleeWeaponItem* GetCurrentMeleeWeapon() const;
 	//~Weapon Item
+
+	int GetMaxNumberDrones() const { return MaxNumberDrones; };
 	
 	//Reload
 	void ReloadCurrentWeapon();
@@ -72,6 +74,9 @@ public:
 	
 	bool AddEquipmentItemToSlot(const TSubclassOf<AEquipableItem> EquipableItemClass, int32 SlotIndex);
 
+	void AddAmmunitionAmmo(EAmmunitionType AmmunitionType, int32 Count);
+	void RemoveAmmunitionAmmo(EAmmunitionType AmmunitionType, int32 Count);
+	
 	void RemoveItemFromSlot(int32 SlotIndex);
 
 	//Widget
@@ -104,6 +109,9 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Loadout")
 	EEquipmentSlots AutoItemInSlot = EEquipmentSlots::None;
 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Loadout")
+	int MaxNumberDrones = 3;
+	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "View")
 	TSubclassOf<UEquipmentViewWidget> ViewWidgetClass;
 
@@ -116,7 +124,6 @@ private:
 	UFUNCTION(Server, Reliable)
 	void Server_EquipItemInSlot(EEquipmentSlots Slot);
 		
-	//Создает текущее оружие
 	void CreateLoadout();
 
 	void AutoEquip();
@@ -169,6 +176,7 @@ private:
 	FDelegateHandle OnCurrentWeaponAmmoChangedHandled;
 	FDelegateHandle OnCurrentWeaponReloadHandled;
 
+	UPROPERTY()
 	UEquipmentViewWidget* ViewWidget;
 	UWeaponWheelWidget* WeaponWheelWidget;
 };

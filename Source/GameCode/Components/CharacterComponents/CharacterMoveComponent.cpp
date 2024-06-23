@@ -51,6 +51,7 @@ void UCharacterMoveComponent::GetLifetimeReplicatedProps(TArray<FLifetimePropert
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 	DOREPLIFETIME(UCharacterMoveComponent, bIsMantling);
+	DOREPLIFETIME(UCharacterMoveComponent, bIsSliding);
 }
 
 void UCharacterMoveComponent::OnPlayrCapsuleHit(UPrimitiveComponent* HitComponent, AActor* OtherActor,
@@ -67,12 +68,19 @@ void UCharacterMoveComponent::Slide()
 		
 		UAnimInstance* AnimInstance = CachedBaseCharacter->GetMesh()->GetAnimInstance();
 		CachedBaseCharacter->PlayAnimMontage(CurrentBaseCharacterMovementComponent->GetSlideAnimMontage());
+
 		
+		if (CachedBaseCharacter->IsLocallyControlled() || CachedBaseCharacter->GetLocalRole() == ROLE_Authority)
+		{
+			CurrentBaseCharacterMovementComponent->StartSlide();
+		}
 	}
 }
 
 void UCharacterMoveComponent::StartSlide(float HalfHeightAbjust)
 {
+	bIsSliding = true;
+	
 	if (CachedBaseCharacter->GetMesh())
 	{
 		FVector MeshRelativeLocation = CachedBaseCharacter->GetMesh()->GetRelativeLocation();
@@ -85,10 +93,13 @@ void UCharacterMoveComponent::StartSlide(float HalfHeightAbjust)
 	{
 		BaseTranslationOffset.Z = CachedBaseCharacter->GetBaseTranslationOffset().Z + HalfHeightAbjust;
 	}
+
 }
 
 void UCharacterMoveComponent::EndSlide(float HalfHeightAbjust)
 {
+	bIsSliding = false;
+	
 	ACharacter* DefaultCharacter = CachedBaseCharacter->GetClass()->GetDefaultObject<ACharacter>();
 
 	if (CachedBaseCharacter->GetMesh())
@@ -297,6 +308,14 @@ void UCharacterMoveComponent::OnRep_IsMantlong(bool bWasMantling)
 	if (CachedBaseCharacter->GetLocalRole() == ROLE_SimulatedProxy && !bWasMantling && bIsMantling)
 	{
 		Mantle(true);
+	}
+}
+
+void UCharacterMoveComponent::OnRep_InSlide(bool bWasSliding)
+{
+	if (CachedBaseCharacter->GetLocalRole() == ROLE_SimulatedProxy && !bWasSliding && bIsSliding)
+	{
+		Slide();
 	}
 }
 

@@ -39,20 +39,27 @@ void UGCBaseCharacterMovementComponent::UpdateFromCompressedFlags(uint8 Flags)
 		// Remaining bit masks are available for custom flags.
 		FLAG_Custom_0 = 0x10, - Sprinting flag
 		FLAG_Custom_1 = 0x20, - Mantling
-		FLAG_Custom_2 = 0x40,
+		FLAG_Custom_2 = 0x40, - Slide
 		FLAG_Custom_3 = 0x80,
 	*/
 
 	bool bWasMantling = GetBaseCharacterOwner()->GetCharacterMoveComponent()->bIsMantling;
+	bool bWasSlide = GetBaseCharacterOwner()->GetCharacterMoveComponent()->bIsSliding;
 	
 	bIsSprinting = (Flags & FSavedMove_Character::FLAG_Custom_0) != 0;
 	bool bIsMantling = (Flags & FSavedMove_Character::FLAG_Custom_1) != 0;
-
+	bool bIsSlide = (Flags & FSavedMove_Character::FLAG_Custom_2) != 0;
+	
 	if (GetBaseCharacterOwner()->GetLocalRole() == ROLE_Authority)
 	{
 		if (!bWasMantling && bIsMantling)
 		{
 			GetBaseCharacterOwner()->Mantle(true);
+		}
+
+		if (!bWasSlide && bIsSlide)
+		{
+			GetBaseCharacterOwner()->Slide();
 		}
 	}
 
@@ -850,6 +857,7 @@ void UGCBaseCharacterMovementComponent::StopSlide()
 	}
 
 	bIsSliding = false;
+	GetBaseCharacterOwner()->GetCharacterMoveComponent()->bIsSliding = false;
 	GetWorld()->GetTimerManager().ClearTimer(SlideTimer);
 
 	ACharacter* DefaultCharacter = CharacterOwner->GetClass()->GetDefaultObject<ACharacter>();
@@ -1124,6 +1132,7 @@ void FSavedMove_GC::Clear()
 
 	bSavedIsSprinting = 0;
 	bSavedIsMantling = 0;
+	bSavedIsPressingSlide = 0;
 
 }
 
@@ -1137,10 +1146,11 @@ uint8 FSavedMove_GC::GetCompressedFlags() const
 		// Remaining bit masks are available for custom flags.
 		FLAG_Custom_0 = 0x10, - Sprinting flag
 		FLAG_Custom_1 = 0x20, - Mantling
-		FLAG_Custom_2 = 0x40,
+		FLAG_Custom_2 = 0x40, - Slide
 		FLAG_Custom_3 = 0x80,
 	*/
 
+	
 	if (bSavedIsSprinting)
 	{
 		Result |= FLAG_Custom_0;
@@ -1152,6 +1162,12 @@ uint8 FSavedMove_GC::GetCompressedFlags() const
 		Result |= FLAG_Custom_1;
 	}
 
+	if (bSavedIsPressingSlide)
+	{
+		Result &= ~FLAG_Custom_0;
+		Result |= FLAG_Custom_2;
+	}
+	
 	return Result;
 }
 
@@ -1160,7 +1176,8 @@ bool FSavedMove_GC::CanCombineWith(const FSavedMovePtr& NewMovePtr, ACharacter* 
 	const FSavedMove_GC* NewMove = StaticCast<const FSavedMove_GC*>(NewMovePtr.Get());
 
 	if (bSavedIsSprinting != NewMove->bSavedIsSprinting 
-		|| bSavedIsMantling != NewMove->bSavedIsMantling)
+		|| bSavedIsMantling != NewMove->bSavedIsMantling
+		|| bSavedIsPressingSlide != NewMove->bSavedIsPressingSlide)
 	{
 		return false;
 	}
@@ -1178,6 +1195,7 @@ void FSavedMove_GC::SetMoveFor(ACharacter* InCharacter, float InDeltaTime, FVect
 
 	bSavedIsSprinting = MovementComponent->bIsSprinting;
 	bSavedIsMantling = InBaseCharacter->GetCharacterMoveComponent()->bIsMantling;
+	bSavedIsPressingSlide = InBaseCharacter->GetCharacterMoveComponent()->bIsSliding;
 }
 
 void FSavedMove_GC::PrepMoveFor(ACharacter* Character)
@@ -1187,6 +1205,7 @@ void FSavedMove_GC::PrepMoveFor(ACharacter* Character)
 	UGCBaseCharacterMovementComponent* MovementComponent = StaticCast<UGCBaseCharacterMovementComponent*>(Character->GetMovementComponent());
 
 	MovementComponent->bIsSprinting = bSavedIsSprinting;
+	MovementComponent->bIsSliding = bSavedIsPressingSlide;
 
 }
 

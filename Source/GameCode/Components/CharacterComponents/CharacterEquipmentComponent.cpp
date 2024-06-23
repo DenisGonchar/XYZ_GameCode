@@ -4,9 +4,11 @@
 #include "Components/CharacterComponents/CharacterEquipmentComponent.h"
 #include <Pawns/Character/GCBaseCharacter.h>
 #include <Actors/Equipment/Weapons/RangeWeaponItem.h>
+#include "CharacterInventoryComponent.h"
 #include "Actors/Equipment/Throwables/ThrowableItem.h"
 #include "Actors/Equipment/Weapons/MeleeWeaponItem.h"
 #include "GameCodeTypes.h"
+#include "Inventory/Items/Equipables/InventoryAmmoItem.h"
 #include "Net/UnrealNetwork.h"
 #include "UI/Widget/Equipment/EquipmentViewWidget.h"
 #include "UI/Widget/Equipment/WeaponWheelWidget.h"
@@ -205,15 +207,16 @@ void UCharacterEquipmentComponent::AttachCurrentItemToEquippedSocket()
 
 void UCharacterEquipmentComponent::LaunchCurrentThrowableItem()
 {
-	if (CurrentThrowableItem)
+	if (GetOwner()->HasAuthority() || GetOwner()->GetLocalRole() == ROLE_AutonomousProxy)
 	{
-		CurrentThrowableItem->Throw();
+		if (CurrentThrowableItem)
+		{
+			CurrentThrowableItem->Throw();
 
-		bIsEquipping = false;
-		EquipItemInSlot(PreviousEquippedSlot);
+			bIsEquipping = false;
+			EquipItemInSlot(PreviousEquippedSlot);
+		}
 	}
-
-
 
 }
 
@@ -336,13 +339,31 @@ bool UCharacterEquipmentComponent::AddEquipmentItemToSlot(const TSubclassOf<AEqu
 	else if (DefaultItemObject->IsA<ARangeWeaponItem>())
 	{
 		ARangeWeaponItem* RangeWeaponObject = StaticCast<ARangeWeaponItem*>(DefaultItemObject);
-		int32 AmmoSlotIndex = (int32)RangeWeaponObject->GetAmmoType();
-		AmunitionArray[SlotIndex] += RangeWeaponObject->GetMaxAmmo();
+		int32 AmmoSlotIndex = (int32)RangeWeaponObject->GetDefaultAmmoType();
+		int32 MaxAmmo = RangeWeaponObject->GetDefaultMaxAmmo();
+		AmunitionArray[AmmoSlotIndex] += MaxAmmo;
+		OnCurrentWeaponAmmoChanged(CurrentEquippendWeapon->GetAmmo());
 	}
 
 	
 
 	return true;
+}
+
+void UCharacterEquipmentComponent::AddAmmunitionAmmo(EAmmunitionType AmmunitionType, int32 Count)
+{
+	int32 AmmoSlotIndex = (int32)AmmunitionType;
+	AmunitionArray[AmmoSlotIndex] += Count;
+	OnCurrentWeaponAmmoChanged(CurrentEquippendWeapon->GetAmmo());
+	
+}
+
+void UCharacterEquipmentComponent::RemoveAmmunitionAmmo(EAmmunitionType AmmunitionType, int32 Count)
+{
+	int32 AmmoSlotIndex = (int32)AmmunitionType;
+	AmunitionArray[AmmoSlotIndex] -= Count;
+	OnCurrentWeaponAmmoChanged(CurrentEquippendWeapon->GetAmmo());
+	
 }
 
 void UCharacterEquipmentComponent::RemoveItemFromSlot(int32 SlotIndex)
@@ -533,7 +554,7 @@ void UCharacterEquipmentComponent::ReloadAmmoInCurrentWeapon(int32 NumberOfAmmo 
 {
 	int32 AvailableAmunition = GetAvailadleAmunitionForCurrentWeapon();
 	int32 CurrentAmmo = CurrentEquippendWeapon->GetAmmo();
-	int32 AmmoToReload = CurrentEquippendWeapon->GetMaxAmmo() - CurrentAmmo;
+	int32 AmmoToReload = CurrentEquippendWeapon->GetCurrentMaxAmmo() - CurrentAmmo;
 	int32 ReloadedAmmo = FMath::Min(AvailableAmunition, AmmoToReload);
 
 	if (NumberOfAmmo > 0)
@@ -545,12 +566,49 @@ void UCharacterEquipmentComponent::ReloadAmmoInCurrentWeapon(int32 NumberOfAmmo 
 
 	AmunitionArray[(uint32)CurrentEquippendWeapon->GetAmmoType()] -= ReloadedAmmo;
 	CurrentEquippendWeapon->SetAmmo(ReloadedAmmo + CurrentAmmo);
-	
+
+	UCharacterInventoryComponent* Inventrory = CachedBaseCharacter->GetCharacterInventoryComponent_Muteble();
+	if (Inventrory)
+	{
+		float LeftReloadAmmo = 0.0f;
+		do
+		{
+			FInventorySlot* Item = Inventrory->FindItemSlot(CurrentEquippendWeapon->GetDataTableAmmoID());
+			if (!Item)
+			{
+				break;
+			}
+
+			UInventoryAmmoItem* Ammo = Cast<UInventoryAmmoItem>(Item->Item);
+			if (Ammo && Ammo->GetAmmunitionType() == CurrentEquippendWeapon->GetAmmoType())
+			{
+				Item->Count -= ReloadedAmmo;
+				ReloadedAmmo = Item->Count;
+				LeftReloadAmmo = ReloadedAmmo;
+				
+				Item->UpdateCount();
+				
+				if (ReloadedAmmo <= 0)
+				{
+					Item->ClearSlot();
+				}
+				ReloadedAmmo = FMath::Abs(ReloadedAmmo);
+			}
+			else
+			{
+				break;
+			}
+			
+		}
+		while (LeftReloadAmmo < 0);
+		
+		
+	}
 
 	if (bChecksFull)
 	{
 		AvailableAmunition = AmunitionArray[(uint32)CurrentEquippendWeapon->GetAmmoType()];
-		bool bIsFullyReoaded = CurrentEquippendWeapon->GetAmmo() == CurrentEquippendWeapon->GetMaxAmmo();
+		bool bIsFullyReoaded = CurrentEquippendWeapon->GetAmmo() == CurrentEquippendWeapon->GetCurrentMaxAmmo();
 		if (AvailableAmunition == 0 || bIsFullyReoaded)
 		{
 			CurrentEquippendWeapon->EndReload(true);

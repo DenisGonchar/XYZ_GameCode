@@ -93,8 +93,9 @@ public:
 	 
 	 UFUNCTION()
 	 void OnRep_IsMantlong(bool bWasMantling);
-	
-	
+
+	UFUNCTION()
+	void OnRep_InSlide(bool bWasSliding);
 public:
 	FVector BaseTranslationOffset = FVector::ZeroVector;
 
@@ -110,6 +111,9 @@ public:
 	
 	 UPROPERTY(ReplicatedUsing = OnRep_IsMantlong)
 	 bool bIsMantling;
+
+	UPROPERTY(ReplicatedUsing= OnRep_InSlide)
+	bool bIsSliding;
 	
 protected:
 	TSoftObjectPtr<class AGCBaseCharacter> CachedBaseCharacter;
