@@ -46,7 +46,8 @@ enum class EEquipableItemType : uint8
 	Pistol, 
 	Rifle,
 	Throwable,
-	Melee
+	Melee,
+	Bow
 	
 };
 
@@ -59,6 +60,7 @@ enum class EAmmunitionType : uint8
 	ShotgunShells,
 	FragGrenades,
 	RifleGrenades,
+	Arrow,
 	MAX UMETA(Hidden)
 
 };
@@ -82,6 +84,7 @@ enum class EReticleType : uint8
 	None,
 	Default,
 	SniperRifle,
+	Bow,
 	MAX UMETA(Hidden)
 
 };

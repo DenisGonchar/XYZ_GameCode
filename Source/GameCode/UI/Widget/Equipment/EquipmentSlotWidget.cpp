@@ -34,7 +34,7 @@ void UEquipmentSlotWidget::InitializeEquipmentSlot(TWeakObjectPtr<AEquipableItem
 
 void UEquipmentSlotWidget::UpdateView()
 {
-	if (LinkedEquipableItem.IsValid())
+	if (LinkedEquipableItem.IsValid() && AdapterLinkedInventoryItem.IsValid())
 	{
 		ImageWeaponIcon->SetBrushFromTexture(AdapterLinkedInventoryItem->GetDescription().Icon);
 		TBWeaponName->SetText(AdapterLinkedInventoryItem->GetDescription().Name);

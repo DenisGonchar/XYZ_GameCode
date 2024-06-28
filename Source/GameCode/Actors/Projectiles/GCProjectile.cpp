@@ -27,6 +27,8 @@ void AGCProjectile::LaunchProjectile(FVector Direction)
     ProjectileMovementComponent->Velocity = Direction * ProjectileMovementComponent->InitialSpeed;
     CollisionComponent->IgnoreActorWhenMoving(GetOwner(), true);
 
+    ActorDirection = Direction;
+    
     OnProjectileLaunched();
 
 }
@@ -34,6 +36,11 @@ void AGCProjectile::LaunchProjectile(FVector Direction)
 void AGCProjectile::SetProjectileActive_Implementation(bool bIsProjectileActive)
 {
     ProjectileMovementComponent->SetActive(bIsProjectileActive);
+}
+
+void AGCProjectile::SetSpeedProjectile(float Speed)
+{
+    ProjectileMovementComponent->InitialSpeed = Speed;
 }
 
 void AGCProjectile::BeginPlay()
@@ -47,7 +54,7 @@ void AGCProjectile::BeginPlay()
 void AGCProjectile::OnProjectileLaunched()
 {
     
-}
+} 
 
 void AGCProjectile::OnCollisionHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit)
 {

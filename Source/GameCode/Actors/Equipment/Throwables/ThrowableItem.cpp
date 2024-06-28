@@ -3,10 +3,11 @@
 
 #include "ThrowableItem.h"
 
-#include "IDesktopPlatform.h"
 #include "Pawns/Character/GCBaseCharacter.h"
 #include "../../Projectiles/GCProjectile.h"
 #include "Net/UnrealNetwork.h"
+#include "Widgets/Text/ISlateEditableTextWidget.h"
+
 
 void AThrowableItem::BeginPlay()
 {
@@ -26,7 +27,7 @@ void AThrowableItem::BeginPlay()
 	for (int32 i = 0; i < ProjectilePoolSize; ++i)
 	{
 		AGCProjectile* Projectile = GetWorld()->SpawnActor<AGCProjectile>(ProjectileClass, ProjectilePoolLocation, FRotator::ZeroRotator);
-		Projectile->SetOwner(GetCharacterOwner());
+		Projectile->SetOwner(GetOwner());
 		Projectile->SetProjectileActive(false);
 		ProjectilePool.Add(Projectile);
 	}
@@ -60,7 +61,7 @@ void AThrowableItem::Throw()
 	FVector LaunchDirection;
 	FVector SpawnLocation;
 
-	if (CharacterOwner->IsPlayerControlled())
+	if (CharacterOwner->IsPlayerControlled() && CharacterOwner->IsLocallyControlled())
 	{
 		FVector PlayerViewPoint;
 		FRotator PlayerViewRotation;
@@ -70,7 +71,6 @@ void AThrowableItem::Throw()
 		{
 			Controller->GetPlayerViewPoint(PlayerViewPoint, PlayerViewRotation);
 		}
-
 
 		
 		FTransform PlayerViewTransform(PlayerViewRotation, PlayerViewPoint);

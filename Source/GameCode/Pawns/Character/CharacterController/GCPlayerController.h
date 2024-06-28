@@ -7,6 +7,7 @@
 #include "GCPlayerController.generated.h"
 
 class UPlayerHUDWidget;
+class UDroneHUDWidget;
 
 DECLARE_DELEGATE_OneParam(FOnTargetHit, bool)
 
@@ -20,16 +21,22 @@ public:
 	virtual void SetPawn(APawn* InPawn) override;
 
 	virtual void Tick(float DeltaSeconds) override;
-
+	
 	bool GetIgnoreCameraPitch() const;
 
 	void SetIgnoreCameraPitch(bool bIgnoreCameraPitch_In);
 
 	virtual void InstigatedAnyDamage(float Damage, const UDamageType* DamageType, AActor* DamagedActor, AActor* DamageCauser) override;
+
+	void SetVisibilityCharacterWidgets(ESlateVisibility SlateVisibility);
+	void SetVisibilityDroneWidgets(ESlateVisibility SlateVisibility);
 	
 protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Widgets")
 	TSubclassOf<UPlayerHUDWidget> PlayerHUDWidgetClass;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Widgets")
+	TSubclassOf<UDroneHUDWidget> DroneHUDWidgetClass;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Widgets")
 	TSubclassOf<class UUserWidget> MainMenuWidgetClass;
@@ -39,10 +46,20 @@ protected:
 	FOnTargetHit OnTargetHit;
 private:
 
+	void MoveUp(float Value);
 	void MoveForward(float Value);
 	void MoveRight(float Value);
 	void Turn(float Value);
 	void LookUp(float Value);
+
+	//Drone
+	void Detonation();
+	void BackToCharacter();
+
+	void NextActiveDrone();
+	void PreviousActiveDrone();
+
+	void SwitchCamera();
 	
 	//Crouch
 	void ChangeCrouchState();
@@ -111,6 +128,10 @@ private:
 
 	void ConfirmWeaponWheelSelection();
 
+	//SpawnDrone
+	void Drone();
+	void ActiveDrone();
+	
 	void QuickSaveGame();
 	void QuickLoadGame();
 
@@ -120,6 +141,7 @@ private:
 #endif
 
 	TSoftObjectPtr<class AGCBaseCharacter> CachedBaseCharacter;
+	TSoftObjectPtr<class AGCBaseDrone> CachedBaseDrone;
 
 private:
 
@@ -127,8 +149,9 @@ private:
 
 	void OnInteractableObjectFound(FName ActionName);
 	void CreateAndInitializeWidget();
-
+	
 	UPlayerHUDWidget* PlayerHUDWidget = nullptr;
+	UDroneHUDWidget* DroneHUDWidget = nullptr;
 	UUserWidget* MainMenuWidget = nullptr;
 
 

@@ -16,4 +16,9 @@ void UWeaponInventoryItem::SetEquipWeaponClass(TSubclassOf<AEquipableItem>& Weap
 TSubclassOf<AEquipableItem> UWeaponInventoryItem::GetEquipWeaponClass() const
 {
 	return EquipWeaponClass;
+}
+
+bool UWeaponInventoryItem::Consume(AGCBaseCharacter* ConsumeTarget)
+{
+	return false;
 }	

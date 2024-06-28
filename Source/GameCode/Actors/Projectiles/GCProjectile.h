@@ -7,6 +7,8 @@
 #include "GCProjectile.generated.h"
 
 class AGCProjectile;
+class UProjectileMovementComponent;
+
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FOnProjectileHit, AGCProjectile*, Projectile, const FHitResult&, Hit, const FVector&, Direction);
 
 UCLASS()
@@ -27,20 +29,27 @@ public:
 	UFUNCTION(BlueprintNativeEvent)
 	void SetProjectileActive(bool bIsProjectileActive);
 
+	UProjectileMovementComponent* GetProjectileMovementComponent() const { return ProjectileMovementComponent; }
+
+	void SetSpeedProjectile(float Speed);
+	
 protected:
 	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	class USphereComponent* CollisionComponent;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
-	class UProjectileMovementComponent* ProjectileMovementComponent;
+	UProjectileMovementComponent* ProjectileMovementComponent;
 
 	virtual void BeginPlay() override;
 	virtual void OnProjectileLaunched();
 
+	FVector GetDirection() const {return ActorDirection; };
+	
 	UFUNCTION()
 	virtual void OnCollisionHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector  NormalImpulse, const FHitResult& Hit);
 
-private:
-
+protected:
+	FVector ActorDirection = FVector::ZeroVector;
+	
 };

@@ -4,7 +4,6 @@
 #include "Utils/GCDataTableUtils.h"
 #include "Engine/DataTable.h"
 #include <Inventory/Items/InventoryItem.h>
-#include "GameCodeTypes.h"
 
 
 FWeaponTableRow* GCDataTableUtils::FindWeaponData(const FName WeaponID)
@@ -31,4 +30,18 @@ FItemTableRow* GCDataTableUtils::FindInventoryItemData(const FName ItemID)
 		return nullptr;
 	}
 	return InventoryDataTable->FindRow<FItemTableRow>(ItemID, contextString);
+}
+
+FAmmoTableRow* GCDataTableUtils::FindAmmoItemData(const FName ItemID)
+{
+	static const FString contextString(TEXT("Find Ammo Item Data"));
+
+	UDataTable* AmmoInventoryDataTable = LoadObject<UDataTable>(nullptr, TEXT("/Game/GameCode/Core/Data/DataTables/DT_AmmoItemList.DT_AmmoItemList"));
+
+	if (AmmoInventoryDataTable == nullptr)
+	{
+		return nullptr;
+	}
+	return AmmoInventoryDataTable->FindRow<FAmmoTableRow>(ItemID, contextString);
+	
 }

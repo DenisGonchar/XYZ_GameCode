@@ -3,8 +3,6 @@
 
 #include "GCBaseCharacter.h"
 #include "AIController.h"
-#include "Net/UnrealNetwork.h"
-#include "Curves/CurveVector.h"
 #include "Kismet/KismetSystemLibrary.h"
 #include "GameFramework/PhysicsVolume.h"
 #include "GameFramework/CharacterMovementComponent.h"
@@ -16,8 +14,6 @@
 #include "Components/CapsuleComponent.h"
 #include "Components/WidgetComponent.h"
 #include "Actors/Interactive/InteractiveActor.h"
-#include "Actors/Interactive/Environment/Ladder.h"
-#include "Actors/Interactive/Environment/zipline.h"
 #include "Actors/Interactive/Interface/Interactive.h"
 #include "Actors/Equipment/Weapons/RangeWeaponItem.h"
 #include "Actors/Equipment/Weapons/MeleeWeaponItem.h"
@@ -25,11 +21,10 @@
 #include "Inventory/Items/InventoryItem.h"
 #include "GameCodeTypes.h"
 #include "SignificanceManager.h"
-#include "AbilitySystemComponent/GCAbilitySystemComponent.h"
-#include "AbilitySystemComponent/AttributeSets/GCCharacterAttributeSet.h"
-#include "Components/BoxComponent.h"
 #include "Components/CharacterComponents/CharacterHitReactionComponent.h"
 #include "Components/CharacterComponents/CharacterMoveComponent.h"
+#include "Inventory/Items/Powerups/Drone.h"
+#include "Pawns/Drone/GCBaseDrone.h"
 
 
 AGCBaseCharacter::AGCBaseCharacter(const FObjectInitializer& ObjectInitializer)
@@ -451,17 +446,7 @@ bool AGCBaseCharacter::IsSwimmingUnderWater() const
 
 void AGCBaseCharacter::StartFire()
 {
-	if (!CharacterAttributeComponent->IsAlive())
-	{
-		return;
-	}
-	
-	if (CharacterEquipmentComponent->IsSelectingWeapon())
-	{
-		return;
-	}
-
-	if (CharacterEquipmentComponent->IsEquipping())
+	if (!CharacterAttributeComponent->IsAlive() && CharacterEquipmentComponent->IsSelectingWeapon() && CharacterEquipmentComponent->IsEquipping())
 	{
 		return;
 	}
@@ -638,15 +623,17 @@ void AGCBaseCharacter::Interact()
 	if (LineOfSightObject.GetInterface())
 	{
 		LineOfSightObject->Interact(this);
+		LineOfSightObject = nullptr;
+		OnInteractableObjectFound.ExecuteIfBound(NAME_None);
 	}
 }
 
-bool AGCBaseCharacter::PickupItem(TWeakObjectPtr<UInventoryItem> ItemToPickup)
+bool AGCBaseCharacter::PickupItem(TWeakObjectPtr<UInventoryItem> ItemToPickup, int32 Count)
 {
 	bool Result = false;
 	if (CharacterInventoryComponent->HasFreeSlot())
 	{
-		CharacterInventoryComponent->AddItem(ItemToPickup, 1);
+		CharacterInventoryComponent->AddItem(ItemToPickup, Count);
 		Result = true;
 	}
 	return Result;
@@ -675,6 +662,99 @@ void AGCBaseCharacter::UseInventory(APlayerController* PlayerController)
 		PlayerController->bShowMouseCursor = false;
 	}
 
+}
+
+void AGCBaseCharacter::Drone()
+{
+	//TODO Spawn Drone, Use key F
+
+	if (CurrentSpawnDrone && ActiveDrones.Num() >= CharacterEquipmentComponent->GetMaxNumberDrones())
+	{
+		return;
+	}
+	
+	FInventorySlot* Slot = CharacterInventoryComponent->FindItemSlot(FName("Drone"));
+	if (Slot != nullptr)
+	{
+		UDrone* Item = Cast<UDrone>(Slot->Item);
+		if (!Item && !Item->GetDrone())
+		{
+			return;
+		}
+
+		FTransform ThisTransform = GetTransform();
+		ThisTransform.SetLocation(FVector(0.0f, 0.0f, -100.0f));
+		
+		AGCBaseDrone* Drone = GetWorld()->SpawnActorDeferred<AGCBaseDrone>(Item->GetDrone(), ThisTransform, GetOwner(), nullptr, ESpawnActorCollisionHandlingMethod::AlwaysSpawn);
+		CurrentSpawnDrone = Drone;
+
+		Drone->SetOwnerCharacter(this);
+		ActiveDrones.Add(Drone);
+		
+		UAnimMontage* EquipMontage = Item->GetCharacterEquipAnimMontage();
+		if (IsValid(EquipMontage))
+		{
+			float EquipDuretion = PlayAnimMontage(EquipMontage);
+		}
+
+		Slot->ClearSlot();
+	}
+	
+}
+
+void AGCBaseCharacter::ActiveDrone()
+{
+	PossessDrone(ActiveDrones.Num() - 1);
+}
+
+void AGCBaseCharacter::SpawnDrone()
+{
+	if(CurrentSpawnDrone == nullptr)
+	{
+		return;
+	}
+	
+	FTransform Transform = GetActorTransform();
+	Transform.SetLocation(GetMesh()->GetSocketLocation(CurrentSpawnDrone->EquippedSocketName) + FVector(0.0f, 0.0f, 100.0f));
+	
+	CurrentSpawnDrone->FinishSpawning(Transform);
+	CurrentSpawnDrone = nullptr;
+	
+	PossessDrone(ActiveDrones.Num() - 1);
+}
+
+void AGCBaseCharacter::PossessDrone(int8 Index)
+{
+	if (ActiveDrones.Num() == 0)
+	{
+		return;
+	}
+
+	CurrentIndexActiveDrone = Index;
+	AGCBaseDrone* Drone = ActiveDrones[Index];
+
+	GetController()->Possess(Drone);
+	
+}
+
+int8 AGCBaseCharacter::GetCurrentIndexActiveDrone() const
+{
+	return CurrentIndexActiveDrone;
+}
+
+void AGCBaseCharacter::SetCurrentIndexActiveDrone(int8 NewIndex)
+{
+	CurrentIndexActiveDrone = NewIndex;
+}
+
+void AGCBaseCharacter::RemoveActiveDrones(AGCBaseDrone* Drone)
+{
+	if (!Drone)
+	{
+		return;
+	}
+
+	ActiveDrones.Remove(Drone);
 }
 
 void AGCBaseCharacter::InitializeHealthProgress()

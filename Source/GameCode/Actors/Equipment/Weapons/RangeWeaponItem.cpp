@@ -76,6 +76,11 @@ void ARangeWeaponItem::StopFire()
 	
 }
 
+bool ARangeWeaponItem::bAiming()
+{
+	return bIsAiming;
+}
+
 void ARangeWeaponItem::SetAmmo(int32 NewAmmo)
 {
 	CurrentWeaponParameters.WeaponAmmo = NewAmmo;
@@ -286,7 +291,7 @@ void ARangeWeaponItem::ProcessRecoil(float DeltaTime)
 	float RecoilYaw = CurrentWeaponParameters.RecoilParameters.RecoilYaw / GetRecoilTimeInterval() * DeltaTime;
 	CharacterOwner->AddControllerYawInput(RecoilYaw);
 	AccumulatedRecoilYaw += RecoilYaw;
-
+	
 }
 
 void ARangeWeaponItem::ProcessRecoilback(float DeltaTime)

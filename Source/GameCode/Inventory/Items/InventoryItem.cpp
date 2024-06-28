@@ -8,6 +8,8 @@ void UInventoryItem::Initialize(FName DataTableID_In, const FInventoryItemDescri
 	DataTableID = DataTableID_In;
 	Description.Icon = Description_In.Icon;
 	Description.Name = Description_In.Name;
+	Description.bIsAmmoVisibility = Description_In.bIsAmmoVisibility;
+	
 	bIsInitialized = true;
 
 }

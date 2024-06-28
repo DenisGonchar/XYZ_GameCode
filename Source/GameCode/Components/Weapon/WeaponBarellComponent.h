@@ -93,8 +93,20 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Barell attributes | Hit registration| Additional")
 	TSubclassOf<AGCProjectile> AdditionalProjectileClass;
 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Barell attributes | Speed", meta = (EditCondition = "HitRegistration == EHitRegistrationType::Projectile"))
+	float MinSpeedProjectile = 1000.0f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Barell attributes | Speed", meta = (EditCondition = "HitRegistration == EHitRegistrationType::Projectile"))
+	float MaxSpeedProjectile = 5000.0f;
+	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Barell attributes | Damage")
 	float DamageAmount = 20.0f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Barell attributes | Damage")
+	float MinDamageAmount = 20.0f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Barell attributes | Damage")
+	UCurveFloat* DamageCurve;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Barell attributes | Damage")
 	TSubclassOf<class UDamageType> DamageTypeClass;
@@ -116,8 +128,10 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Barell attributes | Curve")
 	UCurveFloat* FalloffDiagrama;
-
-
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Barell attributes | Spread angle")
+	bool bIsRandRange = false;
+	
 private:
 	void ShotInternal(const TArray<FShotInfo>& ShotsInfo);
 

@@ -19,7 +19,8 @@ public:
 	void SetEquipWeaponClass(TSubclassOf<AEquipableItem>& WeaponClass);
 
 	TSubclassOf<AEquipableItem> GetEquipWeaponClass() const;
-
+	
+	virtual bool Consume(AGCBaseCharacter* ConsumeTarget) override;
 protected:
 	TSubclassOf<AEquipableItem> EquipWeaponClass;
 

@@ -121,6 +121,7 @@ void APlayerCharacter::Turn(float Value)
 	AddControllerYawInput(Value * GetWeaponAimTurnModifier() * BaseTurnRate * GetWorld()->GetDeltaSeconds() * CustomTimeDilation );
 
 	StopRecoilOnInput(Value);
+
 	
 }
 
@@ -213,14 +214,12 @@ void APlayerCharacter::EndSlide(float HalfHeightAbjust)
 void APlayerCharacter::OnSprintStart_Implementation()
 {
 	Super::OnSprintStart_Implementation();
-	UE_LOG(LogTemp, Log, TEXT("AGCBaseCharacter::OnSprintStart_Implemention"));
 	StartCamera();
 }
 
 void APlayerCharacter::OnSprintEnd_Implementation()
 {
 	Super::OnSprintEnd_Implementation();
-	UE_LOG(LogTemp, Warning, TEXT("AGCBaseCharacter::OnSprintEnd_Implemention"));
 	EndCamera();
 }
 

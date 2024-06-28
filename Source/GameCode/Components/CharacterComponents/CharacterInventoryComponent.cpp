@@ -62,6 +62,8 @@ bool UCharacterInventoryComponent::AddItem(TWeakObjectPtr<UInventoryItem> ItemTo
 	{
 		FreeSlot->Item = ItemToAdd;
 		FreeSlot->Count = Count;
+		FreeSlot->bIsVisibility = ItemToAdd->GetDescription().bIsAmmoVisibility;
+		
 		ItemsInInventory++;
 		Result = true;
 		FreeSlot->UpdateSlotState();
@@ -132,7 +134,7 @@ void UCharacterInventoryComponent::CreateViewWidget(APlayerController* PlayerCon
 
 FInventorySlot* UCharacterInventoryComponent::FindItemSlot(FName ItemID)
 {
-	return InventorySlots.FindByPredicate([=](const FInventorySlot& Slot) {return Slot.Item->GetDataTableID() == ItemID;});
+	return InventorySlots.FindByPredicate([=](const FInventorySlot& Slot) {return  Slot.Item.IsValid() && Slot.Item->GetDataTableID() == ItemID;});
 }
 
 FInventorySlot* UCharacterInventoryComponent::FindFreeSlot()
@@ -158,10 +160,27 @@ void FInventorySlot::UpdateSlotState()
 	OnInventorySlotUpdate.ExecuteIfBound();
 }
 
+void FInventorySlot::BindOnInventoryCountUpdate(const FInventoryCountUpdate& Callback) const
+{
+	OnInventoryCountUpdate = Callback;
+}
+
+void FInventorySlot::UnbindOnInventoryCountUpdate()
+{
+	OnInventoryCountUpdate.Unbind();
+}
+
+void FInventorySlot::UpdateCount()
+{
+	OnInventoryCountUpdate.ExecuteIfBound(Count);
+}
+
+
 void FInventorySlot::ClearSlot()
 {
 	Item = nullptr;
 	Count = 0;
+	bIsVisibility = false;
 	UpdateSlotState();
 
 }

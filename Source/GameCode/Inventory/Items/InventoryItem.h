@@ -3,7 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "UObject/NoExportTypes.h"
+#include "GameCodeTypes.h"
 #include "Engine/DataTable.h"
 #include "InventoryItem.generated.h"
 
@@ -24,6 +24,9 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Item view")
 	UTexture2D* Icon;
 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Item view")
+	bool bIsAmmoVisibility = false;
+	
 };
 
 USTRUCT(BlueprintType)
@@ -60,6 +63,23 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Item view")
 	FInventoryItemDescription InventoryItemDescription;
 
+};
+
+USTRUCT()
+struct FAmmoTableRow : public FTableRowBase
+{
+	GENERATED_BODY()
+
+public:
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Item view")
+	TSubclassOf<APickableItem> PickableActorClass;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Item view")
+	EAmmunitionType AmunitionType; 
+	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Item view")
+	FInventoryItemDescription InventoryItemDescription;
+	
 };
 
 UCLASS(Blueprintable)

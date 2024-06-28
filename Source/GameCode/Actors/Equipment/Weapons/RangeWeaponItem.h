@@ -32,11 +32,11 @@ struct FRecoilParameters
 {
 	GENERATED_BODY()
 
-	//отдача в сторону 
+	//пїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, meta=(ClampMin = -2.0f, UIMin = -2.0f, ClampMax = 2.0f, UIMax = 2.0f))
 	float RecoilYaw = -0.1f;
 
-	//отдача вверх
+	//пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, meta=(ClampMin = -2.0f, UIMin = -2.0f, ClampMax = 2.0f, UIMax = 2.0f))
 	float RecoilPitch = 0.2f;
 	
@@ -110,7 +110,10 @@ struct FWeaponParameters
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon|Parameters|Recoil")
 	FRecoilParameters RecoilParameters;
-	
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon|Parameters|Recoil")
+	UCurveFloat* RecoilAngleCurve;
+		
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon|Parameters|Recoil")
 	TSubclassOf<class UMatineeCameraShake> ShotCameraShakeClass;
 	
@@ -134,14 +137,15 @@ public:
 	
 	virtual void Tick(float DeltaSeconds) override;
 	
-	void StartFire();
-	void StopFire();
+	virtual void StartFire();
+	virtual void StopFire();
 	
 	bool IsFiring() const { return bIsFiring; }
 
-	void StartAim() { bIsAiming = true; }
-	void StopAim() { bIsAiming = false; }
-
+	virtual void StartAim() { bIsAiming = true; }
+	virtual void StopAim() { bIsAiming = false; }
+	virtual bool bAiming();
+	
 	float GetAimFOV() const { return CurrentWeaponParameters.AimFOV; }
 	float GetAimMovementMaxSpeed() const { return CurrentWeaponParameters.AimMovementMaxSpeed; }
 	float GetAimTurnModifier() const { return CurrentWeaponParameters.AimTurnModifier; }
@@ -151,14 +155,17 @@ public:
 
 	//Ammo
 	int32 GetAmmo() const { return CurrentWeaponParameters.WeaponAmmo; }
-	int32 GetMaxAmmo() const { return CurrentWeaponParameters.WeaponMaxAmmo; }
+	int32 GetCurrentMaxAmmo() const { return CurrentWeaponParameters.WeaponMaxAmmo; }
+	int32 GetDefaultMaxAmmo() const { return WeaponDefaultParameters.MaxAmmo; }
+	
 	void SetAmmo(int32 NewAmmo);
 	bool CanShoot() const;
 
 	FOnAmmoChanged OnAmmoChanged;
 
 	EAmmunitionType GetAmmoType() const { return CurrentWeaponParameters.AmmoType;}
-
+	EAmmunitionType GetDefaultAmmoType() const { return WeaponDefaultParameters.AmmoType;}
+	
 	virtual EReticleType GetReticleType() const;
 	FWeaponParameters GetWeaponParameters() {return CurrentWeaponParameters;}
 
@@ -184,12 +191,16 @@ public:
 	void Multicast_Reload();
 
 	
+	void SetAllAmmo();
+
+	FName GetDataTableAmmoID() const {return DataTableAmmoID;}
+	
 protected:
 	
 	virtual void BeginPlay() override;
 
-	void SetAllAmmo();
 	
+	float GetCurrentBulletSpreadAngle() const;
 protected:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
@@ -203,7 +214,11 @@ protected:
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	FWeaponParameters WeaponAdditionalParameters;
-	
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Item")
+	FName DataTableAmmoID = NAME_None;
+
+	bool bIsAiming = false;
 private:
 
 	UPROPERTY(Replicated)
@@ -211,7 +226,6 @@ private:
 
 	bool bIsAdditional = false;
 	
-	bool bIsAiming;
 
 	UPROPERTY(Replicated)
 	bool bIsReloading = false;
@@ -221,7 +235,6 @@ private:
 	void ProcessRecoil(float DeltaTime);
 	void ProcessRecoilback(float DeltaTime);
 	
-	float GetCurrentBulletSpreadAngle() const;
 	void MakeShot();
 
 	void OnShotTimerElapsed();
@@ -236,6 +249,7 @@ private:
 	float AccumulatedRecoilYaw = 0.0f;
 	int32 AccumulatedShots = 0;
 	float RecoilRollbackTime = 0.0f;
+
 	
 	FTimerHandle ShotTimer;
 	FTimerHandle ReloadTimer;

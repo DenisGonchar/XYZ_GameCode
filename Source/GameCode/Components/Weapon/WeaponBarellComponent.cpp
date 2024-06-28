@@ -12,9 +12,11 @@
 #include "Kismet/GameplayStatics.h"
 #include "NiagaraFunctionLibrary.h"
 #include "NiagaraComponent.h"
+#include "Actors/Equipment/Weapons/BowWeaponItem.h"
 #include "Components/DecalComponent.h"
 #include "Actors/Projectiles/GCProjectile.h"
 #include "DataAsset/ImpactFXData.h"
+#include "GameFramework/ProjectileMovementComponent.h"
 #include "Net/UnrealNetwork.h"
 
 
@@ -60,7 +62,15 @@ void UWeaponBarellComponent::Shot(FVector ShotStart, FVector ShotDirection, floa
 	
 	for (int i = 0; i < BulletPerShot; i++)
 	{
-		ShotDirection += GetBulletSpreadOffset(FMath::RandRange(0.0f, SpreadAngle), ShotDirection.ToOrientationRotator());
+		if (bIsRandRange)
+		{
+			ShotDirection += GetBulletSpreadOffset(FMath::RandRange(0.0f, SpreadAngle), ShotDirection.ToOrientationRotator());
+		}
+		else
+		{
+			ShotDirection += GetBulletSpreadOffset(SpreadAngle, ShotDirection.ToOrientationRotator());
+		}
+		
 		ShotDirection = ShotDirection.GetSafeNormal();
 		
 		ShotInfo.Emplace(ShotStart, ShotDirection);
@@ -175,17 +185,39 @@ void UWeaponBarellComponent::ProcessHit(const FHitResult& HitResult, const FVect
 
 			UAbilitySystemComponent* AbilitySystem = AbilitySystemActor->GetAbilitySystemComponent();
 			AbilitySystem->ApplyGameplayEffectSpecToSelf(DamageEffectSpes);
-			
-
-			
 		}
 		
 		FPointDamageEvent DamageEvent;
 		DamageEvent.HitInfo = HitResult;
 		DamageEvent.ShotDirection = Direction;
 		DamageEvent.DamageTypeClass = DamageTypeClass;
+
+		float Damage = DamageAmount;
 		
-		HitActor->TakeDamage(DamageAmount, DamageEvent, GetController(), GetOwner());
+		ABowWeaponItem* Weapon = Cast<ABowWeaponItem>(GetOwner());
+		if (Weapon && DamageCurve)
+		{
+			switch (Weapon->GetBowstringType())
+			{
+				case EBowstringType::Tension:
+				{
+					Damage = MinDamageAmount;
+						
+					break;
+				}
+				case EBowstringType::Hold:
+				{
+					float TimeTimer = Weapon->GetTimeTimerReadyToFire();
+
+						Damage = DamageCurve->GetFloatValue(TimeTimer); 
+					break;
+				}
+			}
+			
+		}
+		
+
+		HitActor->TakeDamage(Damage, DamageEvent, GetController(), GetOwner());
 		
 
 	}
@@ -213,6 +245,7 @@ void UWeaponBarellComponent::ProcessHit(const FHitResult& HitResult, const FVect
 
 void UWeaponBarellComponent::LaunchProjectile(const FVector& LaunchStart, const FVector& LaunchDirection)
 {
+	
 	if (bIsAddional)
 	{
 		AGCProjectile* Projectile = GetWorld()->SpawnActor<AGCProjectile>(AdditionalProjectileClass, LaunchStart, LaunchDirection.ToOrientationRotator());
@@ -225,6 +258,20 @@ void UWeaponBarellComponent::LaunchProjectile(const FVector& LaunchStart, const 
 	}
 	
 	AGCProjectile* Projectile = ProjectilePool[CurrentProjectileIndex];
+
+	ABowWeaponItem* Weapon = Cast<ABowWeaponItem>(GetOwner());
+	if (Weapon)
+	{
+		if (Weapon->GetBowstringType() == EBowstringType::Tension)
+		{
+			Projectile->SetSpeedProjectile(MinSpeedProjectile);
+		}
+		else
+		{
+			Projectile->SetSpeedProjectile(MaxSpeedProjectile);
+		}
+		
+	}
 	
 	Projectile->SetActorLocation(LaunchStart);
 	Projectile->SetActorRotation(LaunchDirection.ToOrientationRotator());
@@ -232,6 +279,7 @@ void UWeaponBarellComponent::LaunchProjectile(const FVector& LaunchStart, const 
 	Projectile->SetProjectileActive(true);
 	Projectile->OnProjectileHit.AddDynamic(this, &UWeaponBarellComponent::ProcessProjectileHit);
 	Projectile->LaunchProjectile(LaunchDirection.GetSafeNormal());
+	
 	
 	++CurrentProjectileIndex;
 	if (CurrentProjectileIndex == ProjectilePool.Num())

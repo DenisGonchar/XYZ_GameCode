@@ -51,7 +51,7 @@ private:
 	TWeakObjectPtr<AEquipableItem> LinkedEquipableItem;
 
 	/* Adapter for Inventory architecture (with ugly name) */
-	TWeakObjectPtr<UWeaponInventoryItem> AdapterLinkedInventoryItem;;
+	TWeakObjectPtr<UWeaponInventoryItem> AdapterLinkedInventoryItem;
 
 	int32 SlotIndexInComponent = 0;
 

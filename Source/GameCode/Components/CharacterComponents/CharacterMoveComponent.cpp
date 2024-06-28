@@ -51,7 +51,7 @@ void UCharacterMoveComponent::GetLifetimeReplicatedProps(TArray<FLifetimePropert
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 	DOREPLIFETIME(UCharacterMoveComponent, bIsMantling);
-	DOREPLIFETIME(UCharacterMoveComponent, bIsSliding);
+	DOREPLIFETIME_CONDITION(UCharacterMoveComponent, bIsSliding, COND_SimulatedOnly);
 }
 
 void UCharacterMoveComponent::OnPlayrCapsuleHit(UPrimitiveComponent* HitComponent, AActor* OtherActor,
@@ -62,7 +62,7 @@ void UCharacterMoveComponent::OnPlayrCapsuleHit(UPrimitiveComponent* HitComponen
 
 void UCharacterMoveComponent::Slide()
 {
-	if (CanSlide())
+	if (CanSlide() || (bIsSliding || CachedBaseCharacter->GetLocalRole() == ROLE_Authority))
 	{
 		CurrentBaseCharacterMovementComponent->StartSlide();
 		
@@ -118,6 +118,14 @@ bool UCharacterMoveComponent::CanSlide()
 	return CurrentBaseCharacterMovementComponent->IsSprinting() &&
 		   !CurrentBaseCharacterMovementComponent->IsSliding();
 	
+}
+
+void UCharacterMoveComponent::OnRep_InSlide(bool bWasSliding)
+{
+	if (CachedBaseCharacter->GetLocalRole() == ROLE_SimulatedProxy && !bWasSliding && bIsSliding)
+	{
+		Slide();
+	}
 }
 
 void UCharacterMoveComponent::WallRun()
@@ -311,13 +319,6 @@ void UCharacterMoveComponent::OnRep_IsMantlong(bool bWasMantling)
 	}
 }
 
-void UCharacterMoveComponent::OnRep_InSlide(bool bWasSliding)
-{
-	if (CachedBaseCharacter->GetLocalRole() == ROLE_SimulatedProxy && !bWasSliding && bIsSliding)
-	{
-		Slide();
-	}
-}
 
 const FMantlingSetting& UCharacterMoveComponent::GetMantlingSetting(float LedgeHeight) const
 {

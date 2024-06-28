@@ -30,6 +30,7 @@ class ULedgeDetectorComponent;
 class UGCAbilitySystemComponent;
 class UWidgetComponent;
 
+class AGCBaseDrone;
 
 DECLARE_MULTICAST_DELEGATE_OneParam(FOnAimingStateChanged, bool)
 DECLARE_DELEGATE_OneParam(FOnInteractableObjectFound, FName)
@@ -56,6 +57,9 @@ public:
 
 	const UCharacterAttributeComponent* GetCharacterAttributeComponent() const { return CharacterAttributeComponent; }
 	UCharacterAttributeComponent* GetCharacterAttributeComponent_Muteble() const { return CharacterAttributeComponent; }
+
+	const UCharacterInventoryComponent* GetCharacterInventoryComponent() const { return CharacterInventoryComponent; }
+	UCharacterInventoryComponent* GetCharacterInventoryComponent_Muteble() const { return CharacterInventoryComponent; }
 
 	ULedgeDetectorComponent* GetLedgeDetectorComponent() const { return LedgeDetertorComponent; }
 	UCharacterMoveComponent* GetCharacterMoveComponent() const { return CharacterBaseMoveComponent; }
@@ -199,13 +203,29 @@ public:
 	void UnregisterInteractiveActor(AInteractiveActor* InteractiveActor);
 
 	TArray<TWeakObjectPtr<AInteractiveActor>, TInlineAllocator<10>> GetAvaibleInteractiveActors();
-	
-	void Interact();
-#pragma endregion Interactive
-	
-	bool PickupItem(TWeakObjectPtr<UInventoryItem> ItemToPickup);
-	void UseInventory(APlayerController* PlayerController);
 
+	void TraceLineOfSight();
+
+	void Interact();
+	
+	bool PickupItem(TWeakObjectPtr<UInventoryItem> ItemToPickup, int32 Count = 1);
+	void UseInventory(APlayerController* PlayerController);
+#pragma endregion Interactive
+
+#pragma region Drone
+	void Drone();
+	void ActiveDrone(); 
+	
+	void SpawnDrone();
+	void PossessDrone(int8 Index);
+
+	int8 GetCurrentIndexActiveDrone() const;
+	void SetCurrentIndexActiveDrone(int8 NewIndex);
+	
+	TArray<AGCBaseDrone*> GetActiveDrones() const { return ActiveDrones; };
+	void RemoveActiveDrones(AGCBaseDrone* Drone);
+#pragma endregion Drone
+	
 #pragma region Widget
 	void InitializeHealthProgress();
 
@@ -267,8 +287,6 @@ protected:
 	virtual void OnStopAimingInternal();
 #pragma endregion Aiming
 	
-	void TraceLineOfSight();
-
 #pragma region Move
 	virtual bool CanMove();
 #pragma endregion Move
@@ -323,13 +341,13 @@ protected:
 	FName SocketHead;
 #pragma endregion Widget
 	
-#pragma region Time
+#pragma region Team
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Character | Team")
 	ETeams Team = ETeams::Enemy;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Character | Team")
 	float LineOfSightDistance = 500.0f;
-#pragma endregion Time
+#pragma endregion Team
 
 #pragma region Interactabel
 	UPROPERTY()
@@ -351,6 +369,11 @@ protected:
 	float LowSignificanceDistance = 6000.0f;
 #pragma endregion Interactabel
 
+#pragma region Drone
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Character | Drone",  meta = (ClampMin = 1, UIMin = 1))
+	int MaxNumberDrones = 3;
+
+#pragma endregion Drone
 #pragma region GameplayAbilities
 	// UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category= "Abilities")
 	// class UGCAbilitySystemComponent* AbilitySystemComponent;
@@ -372,7 +395,14 @@ protected:
 	//
 	// bool bAreAbilityAdded;
 #pragma endregion GameplayAbilities
+
 private:
+#pragma region Drone
+	TArray<AGCBaseDrone*> ActiveDrones;
+	AGCBaseDrone* CurrentSpawnDrone;
+	
+	int8 CurrentIndexActiveDrone = 0;
+#pragma endregion Drone
 	
 	//void InintGameplayAbilitySystem(AController* NewController);
 	

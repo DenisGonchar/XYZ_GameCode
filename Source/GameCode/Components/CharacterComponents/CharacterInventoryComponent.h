@@ -16,20 +16,30 @@ struct FInventorySlot
 
 public:
 	DECLARE_DELEGATE(FInventorySlotUpdate);
+	DECLARE_DELEGATE_OneParam(FInventoryCountUpdate, int32)
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	TWeakObjectPtr<UInventoryItem> Item;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	int32 Count = 0;
-
+	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	bool bIsVisibility = false;
+	
 	void BindOnInventorySlotUpdate(const FInventorySlotUpdate& Callback) const;
 	void UnbindOnInventorySlotUpdate();
 	void UpdateSlotState();
+	
+	void BindOnInventoryCountUpdate(const FInventoryCountUpdate& Callback) const;
+	void UnbindOnInventoryCountUpdate();
+	void UpdateCount();
+	
 	void ClearSlot();
 	
 protected:
 	mutable FInventorySlotUpdate OnInventorySlotUpdate;
+	mutable FInventoryCountUpdate OnInventoryCountUpdate;
 
 };
 
@@ -54,6 +64,9 @@ public:
 	TArray<FInventorySlot> GetAllItemsCopy() const;
 	TArray<FText> GetAllItemsName() const;
 
+	FInventorySlot* FindItemSlot(FName ItemID);
+	FInventorySlot* FindFreeSlot();
+	
 protected:
 	UPROPERTY(EditAnywhere, Category = "Items")
 	TArray<FInventorySlot> InventorySlots;
@@ -67,10 +80,6 @@ protected:
 	virtual void BeginPlay() override;
 
 	void CreateViewWidget(APlayerController* PlayerController);
-
-	FInventorySlot* FindItemSlot(FName ItemID);
-
-	FInventorySlot* FindFreeSlot();
 
 private:
 	

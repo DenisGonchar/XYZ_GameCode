@@ -15,7 +15,9 @@
 #include "Subsystems/SaveSubsystem/SaveSubsystem.h"
 #include "Kismet/GameplayStatics.h"
 #include "SignificanceManager.h"
+#include "Pawns/Drone/GCBaseDrone.h"
 #include "Subsystems/DebugSubsystem.h"
+#include "UI/Widget/DroneHUDWidget.h"
 
 void AGCPlayerController::SetPawn(APawn* InPawn)
 {
@@ -27,6 +29,18 @@ void AGCPlayerController::SetPawn(APawn* InPawn)
 	{
 		CreateAndInitializeWidget();
 		CachedBaseCharacter->OnInteractableObjectFound.BindUObject(this, &AGCPlayerController::OnInteractableObjectFound);
+
+		SetVisibilityCharacterWidgets(ESlateVisibility::Visible);
+		SetVisibilityDroneWidgets(ESlateVisibility::Hidden);
+		
+	}
+
+	CachedBaseDrone = Cast<AGCBaseDrone>(InPawn);
+	if (CachedBaseDrone.IsValid())
+	{
+		CreateAndInitializeWidget();	
+		SetVisibilityCharacterWidgets(ESlateVisibility::Hidden);
+		SetVisibilityDroneWidgets(ESlateVisibility::Visible);
 	}
 }
 
@@ -70,6 +84,26 @@ void AGCPlayerController::InstigatedAnyDamage(float Damage, const UDamageType* D
 	
 }
 
+void AGCPlayerController::SetVisibilityCharacterWidgets(ESlateVisibility SlateVisibility)
+{
+	if (IsValid(PlayerHUDWidget))
+	{
+		PlayerHUDWidget->SetVisibility(SlateVisibility);
+	}
+	if (IsValid(MainMenuWidget) && MainMenuWidget != nullptr)
+	{
+		MainMenuWidget->SetVisibility(SlateVisibility);
+	}
+}
+
+void AGCPlayerController::SetVisibilityDroneWidgets(ESlateVisibility SlateVisibility)
+{
+	if (IsValid(DroneHUDWidget))
+	{
+		DroneHUDWidget->SetVisibility(SlateVisibility);
+	}
+}
+
 void AGCPlayerController::SetupInputComponent()
 {
 	Super::SetupInputComponent();
@@ -107,7 +141,10 @@ void AGCPlayerController::SetupInputComponent()
 	InputComponent->BindAction("ConfirmWeaponWheelSelection", EInputEvent::IE_Pressed, this, &AGCPlayerController::ConfirmWeaponWheelSelection);
 	InputComponent->BindAction("QuickSaveGame", EInputEvent::IE_Pressed, this, &AGCPlayerController::QuickSaveGame);
 	InputComponent->BindAction("QuickLoadGame", EInputEvent::IE_Pressed, this, &AGCPlayerController::QuickLoadGame);
-	InputComponent->BindAction("AdditionalShootingMode", IE_Pressed, this, &AGCPlayerController::AdditionalShootingMode);
+	InputComponent->BindAction("AdditionalShootingMode", EInputEvent::IE_Pressed, this, &AGCPlayerController::AdditionalShootingMode);
+	InputComponent->BindAction("SpawnDrone", EInputEvent::IE_Pressed, this, &AGCPlayerController::Drone);
+	InputComponent->BindAction("ActiveDrone", EInputEvent::IE_Pressed, this, &AGCPlayerController::ActiveDrone);
+	
 #if UE_BUILD_DEBUG || UE_BUILD_DEVELOPMENT
 	InputComponent->BindAction("Debug_IncreaseGlobalDilation", EInputEvent::IE_Pressed, this, &AGCPlayerController::Debug_IncreaseGlobalDilation);
 	InputComponent->BindAction("Debug_DecreaseGlobalDilation", EInputEvent::IE_Pressed, this, &AGCPlayerController::Debug_DecreaseGlobalDilation);
@@ -116,6 +153,23 @@ void AGCPlayerController::SetupInputComponent()
 	FInputActionBinding& ToggleMenuBinding = InputComponent->BindAction("ToggleMainMenu", EInputEvent::IE_Pressed, this, &AGCPlayerController::ToggleMainMenu);
 	ToggleMenuBinding.bExecuteWhenPaused = true;
 
+	InputComponent->BindAxis("Drone_MoveForward", this, &AGCPlayerController::MoveForward);
+	InputComponent->BindAxis("Drone_MoveRight", this, &AGCPlayerController::MoveRight);
+	InputComponent->BindAxis("Drone_MoveUp", this, &AGCPlayerController::MoveUp);
+	
+	InputComponent->BindAction("Drone_Detonation", IE_Pressed, this, &AGCPlayerController::Detonation);
+	InputComponent->BindAction("Drone_BackToCharacter", IE_Pressed, this, &AGCPlayerController::BackToCharacter);
+	InputComponent->BindAction("Drone_Next", IE_Pressed, this, &AGCPlayerController::NextActiveDrone);
+	InputComponent->BindAction("Drone_Previous", IE_Pressed, this, &AGCPlayerController::PreviousActiveDrone);
+	InputComponent->BindAction("Drone_SwitchCamera", IE_Pressed, this, &AGCPlayerController::SwitchCamera);
+}
+
+void AGCPlayerController::MoveUp(float Value)
+{
+	if (CachedBaseDrone.IsValid())
+	{
+		CachedBaseDrone->MoveUp(Value);	
+	}
 }
 
 void AGCPlayerController::MoveForward(float Value)
@@ -124,6 +178,11 @@ void AGCPlayerController::MoveForward(float Value)
 	{
 		CachedBaseCharacter->MoveForward(Value);
 
+	}
+	
+	if (CachedBaseDrone.IsValid())
+	{
+		CachedBaseDrone->MoveForward(Value);
 	}
 }
 
@@ -134,6 +193,11 @@ void AGCPlayerController::MoveRight(float Value)
 		CachedBaseCharacter->MoveRight(Value);
 
 	}
+
+	if (CachedBaseDrone.IsValid())
+	{
+		CachedBaseDrone->MoveRight(Value);
+	}
 }
 
 void AGCPlayerController::Turn(float Value)
@@ -141,6 +205,11 @@ void AGCPlayerController::Turn(float Value)
 	if (CachedBaseCharacter.IsValid())
 	{
 		CachedBaseCharacter->Turn(Value);
+
+	}
+	if (CachedBaseDrone.IsValid())
+	{
+		CachedBaseDrone->Turn(Value);
 
 	}
 }
@@ -151,6 +220,52 @@ void AGCPlayerController::LookUp(float Value)
 	{
 		CachedBaseCharacter->LookUp(Value);
 
+	}
+
+	if (CachedBaseDrone.IsValid())
+	{
+		CachedBaseDrone->LookUp(Value);
+
+	}
+}
+
+void AGCPlayerController::Detonation()
+{
+	if (CachedBaseDrone.IsValid())
+	{
+		CachedBaseDrone->Detonation();
+	}
+}
+
+void AGCPlayerController::BackToCharacter()
+{
+	if (CachedBaseDrone.IsValid())
+	{
+		CachedBaseDrone->BackToCharacter();
+	}
+}
+
+void AGCPlayerController::NextActiveDrone()
+{
+	if (CachedBaseDrone.IsValid())
+	{
+		CachedBaseDrone->NextDrone();
+	}
+}
+
+void AGCPlayerController::PreviousActiveDrone()
+{
+	if (CachedBaseDrone.IsValid())
+	{
+		CachedBaseDrone->PreviousDrone();
+	}
+}
+
+void AGCPlayerController::SwitchCamera()
+{
+	if (CachedBaseDrone.IsValid())
+	{
+		CachedBaseDrone->SwitchCameara();
 	}
 }
 
@@ -428,6 +543,22 @@ void AGCPlayerController::ConfirmWeaponWheelSelection()
 	}
 }
 
+void AGCPlayerController::Drone()
+{
+	if (CachedBaseCharacter.IsValid())
+	{
+		CachedBaseCharacter->Drone();
+	}
+}
+
+void AGCPlayerController::ActiveDrone()
+{
+	if (CachedBaseCharacter.IsValid())
+	{
+		CachedBaseCharacter->ActiveDrone();
+	}
+}
+
 void AGCPlayerController::QuickSaveGame()
 {
 	USaveSubsystem* SaveSubsystem = UGameplayStatics::GetGameInstance(GetWorld())->GetSubsystem<USaveSubsystem>();
@@ -489,6 +620,19 @@ void AGCPlayerController::CreateAndInitializeWidget()
 			PlayerHUDWidget->AddToViewport();
 		}
 	}
+
+	if (!IsValid(DroneHUDWidget))
+	{
+		DroneHUDWidget = CreateWidget<UDroneHUDWidget>(GetWorld(), DroneHUDWidgetClass);
+		if (IsValid(DroneHUDWidget))
+		{
+			DroneHUDWidget->AddToViewport();
+			if (CachedBaseDrone.IsValid())
+			{
+				SetVisibilityDroneWidgets(ESlateVisibility::Hidden);
+			}
+		}
+	}
 	
 	if (!IsValid(MainMenuWidget))
 	{
@@ -519,6 +663,15 @@ void AGCPlayerController::CreateAndInitializeWidget()
 			CharacterEquipment->OnCurrentThrowItemAmmoChangedEvent.AddUFunction(AmmoWidget,FName("UpdateThrowAmmoCount"));
 		}
 
+	}
+
+	if (CachedBaseDrone.IsValid() && IsValid(DroneHUDWidget))
+	{
+		UReticleWidget* ReticleWidget = DroneHUDWidget->GetReticalWidget();
+		if (IsValid(ReticleWidget))
+		{
+			CachedBaseDrone->OnRotationAngleChanged.AddUFunction(ReticleWidget, FName("OnRotationAngleChanged"));
+		}
 	}
 
 	SetInputMode(FInputModeGameOnly{});
