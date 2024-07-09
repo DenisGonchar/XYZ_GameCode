@@ -38,7 +38,8 @@ void UGCBaceCharacterAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 	bIsOnLadder = CharacterMovement->IsOnLadder();
 	bIsOnZipline = CharacterMovement->IsOnZipline();
 	bIsOnWallRun = CharacterMovement->IsWallRuning();
-
+	bIsOnRockClimbing = CharacterMovement->IsRockClimbing();
+	
 	if (bIsOnLadder)
 	{
 		LadderSpeedRatio = CharacterMovement->GetLadderSpeedRatio();

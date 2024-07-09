@@ -61,6 +61,9 @@ protected:
 	bool bIsOnWallRun = false;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Character animation")
+	bool bIsOnRockClimbing = false;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Character animation")
 	bool bIsStrafing = false;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Character animation")

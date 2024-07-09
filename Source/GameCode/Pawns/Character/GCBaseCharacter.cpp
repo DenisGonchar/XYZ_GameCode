@@ -390,6 +390,21 @@ void AGCBaseCharacter::StopSprint()
 
 }
 
+void AGCBaseCharacter::RockClimbing()
+{
+	CharacterBaseMoveComponent->StartRockClimbing();
+}
+
+void AGCBaseCharacter::UpMoveClimbing()
+{
+	CharacterBaseMoveComponent->RockClimbing(EMoveRockClimbing::Up);
+}
+
+void AGCBaseCharacter::DownMoveClimbing()
+{
+	CharacterBaseMoveComponent->RockClimbing(EMoveRockClimbing::Down);
+}
+
 void AGCBaseCharacter::Mantle(bool bForce /*= false*/)
 {
 	CharacterBaseMoveComponent->Mantle(bForce);

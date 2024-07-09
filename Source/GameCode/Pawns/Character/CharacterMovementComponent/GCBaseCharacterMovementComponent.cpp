@@ -9,7 +9,6 @@
 #include "../../../Actors/Interactive/Environment/Zipline.h"
 #include "../GCBaseCharacter.h"
 #include "../PlayerCharacter.h"
-#include <Actors/Platform/BasePlatform.h>
 #include <Kismet/KismetMathLibrary.h>
 #include "Kismet/GameplayStatics.h"
 #include "Components/BoxComponent.h"
@@ -496,6 +495,71 @@ bool UGCBaseCharacterMovementComponent::IsMantling() const
 	return UpdatedComponent && MovementMode == MOVE_Custom && CustomMovementMode == (uint8)ECustomMovementMode::CMOVE_Mantling;
 }
 
+void UGCBaseCharacterMovementComponent::AttachToRockClimbing(const FMantlingMovementParameters& RockClimbingParameters)
+{
+	CurrentRockClimbingParameters = RockClimbingParameters;
+	
+	FVector ClimbingUpVector = CurrentRockClimbingParameters.PlatformMesh->GetUpVector();
+	float Projection = GetActorToCurrentRockClimbingProjection(RockClimbingParameters.TargetLocation);
+	//NewClimbingCharacterLocation = RockClimbingParameters.PlatforMeshLocation + Projection * ClimbingUpVector + RockClimbingOffset * RockClimbingParameters.PlatformMesh->GetForwardVector();
+	NewClimbingCharacterLocation = RockClimbingParameters.TargetLocation;
+	
+	//Point(GetWorld(), NewClimbingCharacterLocation, 20, FColor::Orange, true, 100);
+	//DrawDebugLine(GetWorld(), GetOwner()->GetActorLocation(), NewClimbingCharacterLocation, FColor::Green, true, 100);
+	
+	SetMovementMode(MOVE_Custom, (uint8)ECustomMovementMode::CMOVE_RockClimbing);
+}
+
+float UGCBaseCharacterMovementComponent::GetActorToCurrentRockClimbingProjection(const FVector& Location) const
+{
+	FVector ClimbingUpVector = CurrentRockClimbingParameters.PlatformMesh->GetUpVector();
+	FVector ClimbingToCharacterDistance = Location - CurrentRockClimbingParameters.PlatforMeshLocation;
+	
+	return FVector::DotProduct(ClimbingUpVector, ClimbingToCharacterDistance);
+}
+
+void UGCBaseCharacterMovementComponent::DetachFromRockClimbing(
+	EDetachFromRockClimbingMethod DetachFromRockClimbingMethod)
+{
+	switch (DetachFromRockClimbingMethod)
+	{
+		case EDetachFromRockClimbingMethod::Fall:
+			{
+				SetMovementMode(MOVE_Falling);
+				break;
+			}
+			
+		case EDetachFromRockClimbingMethod::JumpOff:
+			{
+				FVector JumpDirection = CurrentRockClimbingParameters.PlatformActor->GetActorRightVector() * -1;
+
+				SetMovementMode(MOVE_Falling);
+				
+				FVector JumpVelocity = JumpDirection * JumpOffFromLadderSpeed;
+
+				ForceTargetRotation = JumpDirection.ToOrientationRotator();
+				bForceRotation = true;
+				
+				Launch(JumpVelocity);
+
+				break;
+			}
+		
+	}
+	
+}
+
+bool UGCBaseCharacterMovementComponent::IsRockClimbing() const
+{
+	return UpdatedComponent && MovementMode == MOVE_Custom && CustomMovementMode == (uint8)ECustomMovementMode::CMOVE_RockClimbing;
+
+}
+
+void UGCBaseCharacterMovementComponent::StopAnimClimbing()
+{
+	
+}
+
 void UGCBaseCharacterMovementComponent::AttachToLadder(const class ALadder* Ladder)
 {
 	CurrentLadder = Ladder;
@@ -925,6 +989,13 @@ void UGCBaseCharacterMovementComponent::PhysCustom(float deltaTime, int32 Iterat
 			break;
 		}
 
+		case (uint8) ECustomMovementMode::CMOVE_RockClimbing:
+		{
+			PhysRockClimbing(deltaTime, Iterations);
+
+				break;
+		}
+		
 		default:
 			break;
 	}
@@ -1014,14 +1085,12 @@ void UGCBaseCharacterMovementComponent::PhysZipline(float DeltaTime, int32 Itera
 {
 	CalcVelocity(DeltaTime, 1.0f, false, ClimbingOnZiplineBrakingDecelartion);
 	FVector Delta = Velocity * DeltaTime;
-
-
 	
 	FVector NewPos = GetActorLocation() + Delta;
 	
 	float DistenceEndRail = UKismetMathLibrary::Vector_Distance(GetActorLocation(), CurrentZipline->EndRailMechComponent->GetComponentLocation());
 	
-	DrawDebugLine(GetWorld(), GetActorLocation(), CurrentZipline->EndRailMechComponent->GetComponentLocation(), FColor::Green);
+	//DrawDebugLine(GetWorld(), GetActorLocation(), CurrentZipline->EndRailMechComponent->GetComponentLocation(), FColor::Green);
 
 	if (DistenceEndRail <= 120.0f)
 	{
@@ -1060,6 +1129,19 @@ void UGCBaseCharacterMovementComponent::PhysWallRun(float DeltaTime, int32 Itera
 
 }
 
+void UGCBaseCharacterMovementComponent::PhysRockClimbing(float DeltaTime, int32 Iterations)
+{
+	FVector NewLocation = FMath::VInterpTo(GetActorLocation(), NewClimbingCharacterLocation, DeltaTime, CurrentRockClimbingParameters.StartTime);
+	//FRotator NewRotation = FMath::Lerp(CurrentRockClimbingParameters.InitialRotation, CurrentRockClimbingParameters.TargetRotation, 0);
+	FRotator NewRotation = FMath::RInterpTo(CurrentRockClimbingParameters.InitialRotation, CurrentRockClimbingParameters.TargetRotation * -1, DeltaTime, 1);
+	
+	FVector Delta = NewLocation - GetActorLocation();
+	Velocity = Delta / DeltaTime;
+	
+	FHitResult Hit; 
+	SafeMoveUpdatedComponent(Delta, NewRotation, false, Hit);
+}
+
 
 void UGCBaseCharacterMovementComponent::OnMovementModeChanged(EMovementMode PreviousMovementMode, uint8 PreviousCustomMode)
 {
@@ -1094,13 +1176,15 @@ void UGCBaseCharacterMovementComponent::OnMovementModeChanged(EMovementMode Prev
 
 	if (MovementMode == MOVE_Custom)
 	{
+		Velocity = FVector::ZeroVector;
+		
 		switch (CustomMovementMode)
 		{
 			case (uint8)ECustomMovementMode::CMOVE_Mantling:
 			{
 				
 				GetWorld()->GetTimerManager().SetTimer(MantlingTimer, this, &UGCBaseCharacterMovementComponent::EndMantle, CurrentMantlingParameters.Duration, false);
-
+				break;
 			}
 
 			default:

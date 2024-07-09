@@ -24,6 +24,9 @@ struct FLedgeDescription
 	FVector LedgeHeight;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Ledge description")
+	AActor* PlatformActor;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Ledge description")
 	UStaticMeshComponent* PlatformStaticMesh = nullptr;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Ledge description")
@@ -39,6 +42,12 @@ class GAMECODE_API ULedgeDetectorComponent : public UActorComponent
 public:	
 	bool DetectLedge(OUT FLedgeDescription& LedgeDescription);
 
+	bool DetectLedgePlatform(OUT FLedgeDescription& LedgeDescription);
+
+	bool DetectLedgeMoveUp(OUT FLedgeDescription& LedgeDescription);
+
+	bool DetectLedgeMoveDown(OUT FLedgeDescription& LedgeDescription);
+	
 protected:
 
 	virtual void BeginPlay() override;
@@ -51,6 +60,16 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Detection serring", meta = (UIMin = 0.0f, ClampMin = 0.0f))
 	float ForwardCheckDistance = 100.0f;
+
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Detection serring", meta = (UIMin = 0.0f, ClampMin = 0.0f))
+	float MinimumLedgeHeightClimbing = 40.0f;
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Detection serring", meta = (UIMin = 0.0f, ClampMin = 0.0f))
+	float MaximumLedgeHeightClimbing = 200.0f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Detection serring", meta = (UIMin = 0.0f, ClampMin = 0.0f))
+	float ForwardCheckDistanceClimbing = 100.0f;
 
 private:
 
