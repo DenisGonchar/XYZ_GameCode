@@ -40,6 +40,8 @@
 *.sdf
 *.VC.db
 *.VC.opendb
+*.idea
+*.sln.DotSettings.user
 
 # Precompiled Assets
 SourceArt/**/*.png
