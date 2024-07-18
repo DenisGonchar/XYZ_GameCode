@@ -15,6 +15,8 @@
 #include "DrawDebugHelpers.h"
 #include "Subsystems/DebugSubsystem.h"
 #include <Utils/GCTraceUtils.h>
+
+#include "ChaosInterfaceWrapperCore.h"
 #include "Components/CharacterComponents/CharacterMoveComponent.h"
 
 FNetworkPredictionData_Client_Character* UGCBaseCharacterMovementComponent::GetPredictionData_Client() const
@@ -1131,7 +1133,9 @@ void UGCBaseCharacterMovementComponent::PhysWallRun(float DeltaTime, int32 Itera
 
 void UGCBaseCharacterMovementComponent::PhysRockClimbing(float DeltaTime, int32 Iterations)
 {
-	FVector NewLocation = FMath::VInterpTo(GetActorLocation(), NewClimbingCharacterLocation, DeltaTime, CurrentRockClimbingParameters.StartTime);
+	FVector NewLocation = FMath::VInterpTo(GetActorLocation(), NewClimbingCharacterLocation, DeltaTime, ClimbingTime);
+
+	
 	//FRotator NewRotation = FMath::Lerp(CurrentRockClimbingParameters.InitialRotation, CurrentRockClimbingParameters.TargetRotation, 0);
 	FRotator NewRotation = FMath::RInterpTo(CurrentRockClimbingParameters.InitialRotation, CurrentRockClimbingParameters.TargetRotation * -1, DeltaTime, 1);
 	
@@ -1140,6 +1144,7 @@ void UGCBaseCharacterMovementComponent::PhysRockClimbing(float DeltaTime, int32 
 	
 	FHitResult Hit; 
 	SafeMoveUpdatedComponent(Delta, NewRotation, false, Hit);
+	
 }
 
 

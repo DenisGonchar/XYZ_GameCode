@@ -44,9 +44,9 @@ public:
 
 	bool DetectLedgePlatform(OUT FLedgeDescription& LedgeDescription);
 
-	bool DetectLedgeMoveUp(OUT FLedgeDescription& LedgeDescription);
+	bool DetectLedgeMoveUp(OUT FLedgeDescription& LedgeDescription, bool DrawDebug);
 
-	bool DetectLedgeMoveDown(OUT FLedgeDescription& LedgeDescription);
+	bool DetectLedgeMoveDown(OUT FLedgeDescription& LedgeDescription, bool DrawDebug);
 	
 protected:
 

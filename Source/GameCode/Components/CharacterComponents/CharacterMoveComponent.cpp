@@ -3,9 +3,6 @@
 
 #include "CharacterMoveComponent.h"
 
-#include "CharacterAttributeComponent.h"
-#include "CollisionDebugDrawingPublic.h"
-#include "DrawDebugHelpers.h"
 #include "Actors/Interactive/Environment/Ladder.h"
 #include "Actors/Interactive/Environment/Zipline.h"
 #include "Actors/Platform/Ledge/LedgePlatform.h"
@@ -341,8 +338,8 @@ void UCharacterMoveComponent::RockClimbing(EMoveRockClimbing Move)
 				Mantle();
 				return;
 			}
-			
-			if (CurrentLedgeDetectorComponent->DetectLedgeMoveUp(LedgeDescription))
+
+			if (CurrentLedgeDetectorComponent->DetectLedgeMoveUp(LedgeDescription, bIsDrawDebugUp))
 			{
 				FMantlingMovementParameters MantlingParameters;
 				MantlingParameters.InitialLocation = CachedBaseCharacter->GetActorLocation();
@@ -353,10 +350,10 @@ void UCharacterMoveComponent::RockClimbing(EMoveRockClimbing Move)
 				MantlingParameters.PlatforMeshLocation = LedgeDescription.PlatformMeshTargetLLocation;
 				MantlingParameters.PlatformActor = LedgeDescription.PlatformActor;
 
-				if (ClimbingMontage)
+				if (UpClimbingMontage)
 				{
 					UAnimInstance* AnimInstance = CachedBaseCharacter->GetMesh()->GetAnimInstance();
-					MantlingParameters.StartTime = AnimInstance->Montage_Play(ClimbingMontage) + UpClimbingMontageTime;
+					MantlingParameters.StartTime = AnimInstance->Montage_Play(UpClimbingMontage) + UpClimbingMontageTime;
 					GetWorld()->GetTimerManager().ClearTimer(ClimbingTimer);
 					GetWorld()->GetTimerManager().SetTimer(ClimbingTimer, MantlingParameters.StartTime, false);
 				}
@@ -377,7 +374,8 @@ void UCharacterMoveComponent::RockClimbing(EMoveRockClimbing Move)
 		}
 	case EMoveRockClimbing::Down:
 		{
-			if (CurrentLedgeDetectorComponent->DetectLedgeMoveDown(LedgeDescription))
+			
+			if (CurrentLedgeDetectorComponent->DetectLedgeMoveDown(LedgeDescription, bIsDrawDebugDonw))
 			{
 				FMantlingMovementParameters MantlingParameters;
 				MantlingParameters.InitialLocation = CachedBaseCharacter->GetActorLocation();
@@ -388,10 +386,10 @@ void UCharacterMoveComponent::RockClimbing(EMoveRockClimbing Move)
 				MantlingParameters.PlatforMeshLocation = LedgeDescription.PlatformMeshTargetLLocation;
 				MantlingParameters.PlatformActor = LedgeDescription.PlatformActor;
 
-				if (ClimbingMontage)
+				if (DownClimbingMontage)
 				{
 					UAnimInstance* AnimInstance = CachedBaseCharacter->GetMesh()->GetAnimInstance();
-					MantlingParameters.StartTime = AnimInstance->Montage_Play(ClimbingMontage) + DownClimbingMontageTime;
+					MantlingParameters.StartTime = AnimInstance->Montage_Play(DownClimbingMontage) + DownClimbingMontageTime;
 					GetWorld()->GetTimerManager().ClearTimer(ClimbingTimer);
 					GetWorld()->GetTimerManager().SetTimer(ClimbingTimer, MantlingParameters.StartTime, false);
 				}
@@ -439,10 +437,12 @@ void UCharacterMoveComponent::StartRockClimbing()
 			MantlingParameters.PlatforMeshLocation = LedgeDescription.PlatformMeshTargetLLocation;
 			MantlingParameters.PlatformActor = LedgeDescription.PlatformActor;
 			
-			if (ClimbingMontage)
+			if (StartClimbingMontage)
 			{
 				UAnimInstance* AnimInstance = CachedBaseCharacter->GetMesh()->GetAnimInstance();
-				MantlingParameters.StartTime = AnimInstance->Montage_Play(ClimbingMontage);
+				MantlingParameters.StartTime = AnimInstance->Montage_Play(StartClimbingMontage);
+				AnimInstance->Montage_Play(StartClimbingMontage);
+			
 				GetWorld()->GetTimerManager().ClearTimer(ClimbingTimer);
 				GetWorld()->GetTimerManager().SetTimer(ClimbingTimer, MantlingParameters.StartTime, false);
 			}
@@ -452,9 +452,10 @@ void UCharacterMoveComponent::StartRockClimbing()
 				GetWorld()->GetTimerManager().ClearTimer(ClimbingTimer);
 				GetWorld()->GetTimerManager().SetTimer(ClimbingTimer, MantlingParameters.StartTime, false);
 			}
-
+			
 			CurrentLedgeActor = Cast<ALedgePlatform>(LedgeDescription.PlatformActor);
 			CurrentBaseCharacterMovementComponent->AttachToRockClimbing(MantlingParameters);
+			
 			
 		}
 	}

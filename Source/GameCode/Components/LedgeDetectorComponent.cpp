@@ -184,7 +184,7 @@ bool ULedgeDetectorComponent::DetectLedgePlatform(FLedgeDescription& LedgeDescri
 
 		LedgeDescription.PlatformMeshTargetLLocation = LedgeActor->PlatformMesh->GetRelativeLocation();
 		
-		GEngine->AddOnScreenDebugMessage(-1, 10.0f, FColor::Blue, FString::Printf(TEXT("Actor = LedgePlatform")));
+		//GEngine->AddOnScreenDebugMessage(-1, 10.0f, FColor::Blue, FString::Printf(TEXT("Actor = LedgePlatform")));
 		
 		LedgeDescription.LedgeHeight = CheckHitResult.ImpactPoint;
 		//LedgeDescription.Location = UpCheckHitResult.Location;
@@ -203,7 +203,7 @@ bool ULedgeDetectorComponent::DetectLedgePlatform(FLedgeDescription& LedgeDescri
 	return true;
 }
 
-bool ULedgeDetectorComponent::DetectLedgeMoveUp(FLedgeDescription& LedgeDescription)
+bool ULedgeDetectorComponent::DetectLedgeMoveUp(OUT FLedgeDescription& LedgeDescription, bool DrawDebug)
 {
 	UCapsuleComponent* CapsuleComponent = CachedCharacterOwner->GetCapsuleComponent();
 
@@ -229,11 +229,11 @@ bool ULedgeDetectorComponent::DetectLedgeMoveUp(FLedgeDescription& LedgeDescript
 	float ForwardCheckCapsuleHalfheight = (MaximumLedgeHeight - MinimumLedgeHeight) * 0.5f;
 
 	
-	FVector ForwardStartLocation = CachedCharacterOwner->GetActorLocation() + (CapsuleComponent->GetScaledCapsuleHalfHeight() * 2)  * FVector::UpVector;
+	FVector ForwardStartLocation = CachedCharacterOwner->GetActorLocation() + (CapsuleComponent->GetScaledCapsuleHalfHeight() * 3)  * FVector::UpVector;
 	FVector ForwardEndLocation = ForwardStartLocation + CachedCharacterOwner->GetActorForwardVector() * ForwardCheckDistanceClimbing;
 	
-	//DrawDebugPoint(GetWorld(), ForwardStartLocation, 10, FColor::Green, true, 100);
-	//DrawDebugPoint(GetWorld(), ForwardEndLocation, 10, FColor::Green, true, 100);
+	//DrawDebugPoint(GetWorld(), ForwardStartLocation, 10, FColor::Green, DrawDebug, 100);
+	//DrawDebugPoint(GetWorld(), ForwardEndLocation, 10, FColor::Green, DrawDebug, 100);
 	
 	FHitResult ForwardCheckHitResult;
 	if (!GCTraceUtils::SweepCapsuleSingleByChanel(GetWorld(),ForwardCheckHitResult, ForwardStartLocation, ForwardEndLocation, ForwardCheckCapsuleRadius, ForwardCheckCapsuleHalfheight, FQuat::Identity, ECC_RockClimbing, QueryParams, FCollisionResponseParams::DefaultResponseParam, false, DrawTime, FColor::Black, FColor::Green))
@@ -269,7 +269,7 @@ bool ULedgeDetectorComponent::DetectLedgeMoveUp(FLedgeDescription& LedgeDescript
 
 		LedgeDescription.PlatformMeshTargetLLocation = LedgeActor->PlatformMesh->GetRelativeLocation();
 		
-		GEngine->AddOnScreenDebugMessage(-1, 10.0f, FColor::Blue, FString::Printf(TEXT("Actor = LedgePlatform")));
+		//GEngine->AddOnScreenDebugMessage(-1, 10.0f, FColor::Blue, FString::Printf(TEXT("Actor = LedgePlatform")));
 		
 		LedgeDescription.LedgeHeight = CheckHitResult.ImpactPoint;
 		//LedgeDescription.Location = UpCheckHitResult.Location;
@@ -288,7 +288,7 @@ bool ULedgeDetectorComponent::DetectLedgeMoveUp(FLedgeDescription& LedgeDescript
 	return true;
 }
 
-bool ULedgeDetectorComponent::DetectLedgeMoveDown(FLedgeDescription& LedgeDescription)
+bool ULedgeDetectorComponent::DetectLedgeMoveDown(OUT FLedgeDescription& LedgeDescription, bool DrawDebug)
 {
 	UCapsuleComponent* CapsuleComponent = CachedCharacterOwner->GetCapsuleComponent();
 
@@ -313,14 +313,14 @@ bool ULedgeDetectorComponent::DetectLedgeMoveDown(FLedgeDescription& LedgeDescri
 	float ForwardCheckCapsuleRadius = CapsuleComponent->GetScaledCapsuleRadius();
 	float ForwardCheckCapsuleHalfheight = (MaximumLedgeHeight - MinimumLedgeHeight) * 0.5f;
 	
-	FVector ForwardStartLocation = CachedCharacterOwner->GetActorLocation() - (CapsuleComponent->GetScaledCapsuleHalfHeight() * 2)  * FVector::UpVector;
+	FVector ForwardStartLocation = CachedCharacterOwner->GetActorLocation() - CapsuleComponent->GetScaledCapsuleHalfHeight() * FVector::UpVector;
 	FVector ForwardEndLocation = ForwardStartLocation + CachedCharacterOwner->GetActorForwardVector() * ForwardCheckDistanceClimbing;
 	
-	//DrawDebugPoint(GetWorld(), ForwardStartLocation, 10, FColor::Green, true, 100);
-	//DrawDebugPoint(GetWorld(), ForwardEndLocation, 10, FColor::Green, true, 100);
+	//DrawDebugPoint(GetWorld(), ForwardStartLocation, 20, FColor::Blue, DrawDebug, 100);
+	//DrawDebugPoint(GetWorld(), ForwardEndLocation, 20, FColor::Red, DrawDebug, 100);
 	
 	FHitResult ForwardCheckHitResult;
-	if (!GCTraceUtils::SweepCapsuleSingleByChanel(GetWorld(),ForwardCheckHitResult, ForwardStartLocation, ForwardEndLocation, ForwardCheckCapsuleRadius, ForwardCheckCapsuleHalfheight, FQuat::Identity, ECC_RockClimbing, QueryParams, FCollisionResponseParams::DefaultResponseParam, false, DrawTime, FColor::Black, FColor::Green))
+	if (!GCTraceUtils::SweepCapsuleSingleByChanel(GetWorld(),ForwardCheckHitResult, ForwardStartLocation, ForwardEndLocation, ForwardCheckCapsuleRadius, ForwardCheckCapsuleHalfheight, FQuat::Identity, ECC_RockClimbing, QueryParams, FCollisionResponseParams::DefaultResponseParam, DrawDebug, DrawTime, FColor::Black, FColor::Green))
 	{
 		return false;
 	}
@@ -338,7 +338,7 @@ bool ULedgeDetectorComponent::DetectLedgeMoveDown(FLedgeDescription& LedgeDescri
 		FVector DonwStartLocation = ForwardCheckHitResult.ImpactPoint - ForwardCheckHitResult.ImpactNormal * UpCheckDepthOffset - UpSphereCheckRadius * FVector::ForwardVector;
 		FVector DonwEndLocation(DonwStartLocation.X, DonwStartLocation.Y, DonwStartLocation.Z - MaximumLedgeHeightClimbing - UpSphereCheckRadius);
 		FHitResult UpCheckHitResult;
-		if (!GCTraceUtils::SweepSphereSingleByChanel(GetWorld(), UpCheckHitResult, DonwStartLocation, DonwEndLocation, UpSphereCheckRadius, ECC_RockClimbing, QueryParams, FCollisionResponseParams::DefaultResponseParam, false, DrawTime, FColor::Black, FColor::Yellow))
+		if (!GCTraceUtils::SweepSphereSingleByChanel(GetWorld(), UpCheckHitResult, DonwStartLocation, DonwEndLocation, UpSphereCheckRadius, ECC_RockClimbing, QueryParams, FCollisionResponseParams::DefaultResponseParam, DrawDebug, DrawTime, FColor::Black, FColor::Yellow))
 		{
 			return false;
 		}
@@ -353,7 +353,7 @@ bool ULedgeDetectorComponent::DetectLedgeMoveDown(FLedgeDescription& LedgeDescri
 
 		LedgeDescription.PlatformMeshTargetLLocation = LedgeActor->PlatformMesh->GetRelativeLocation();
 		
-		GEngine->AddOnScreenDebugMessage(-1, 10.0f, FColor::Blue, FString::Printf(TEXT("Actor = LedgePlatform")));
+		//GEngine->AddOnScreenDebugMessage(-1, 10.0f, FColor::Blue, FString::Printf(TEXT("Actor = LedgePlatform")));
 		
 		LedgeDescription.LedgeHeight = CheckHitResult.ImpactPoint;
 		//LedgeDescription.Location = UpCheckHitResult.Location;

@@ -135,16 +135,34 @@ public:
 	//RockClimbing
 	UPROPERTY()
 	bool bIsRockClimbing;
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category= "Character | Movement | Rock Climbing")
+	class UAnimMontage* StartClimbingMontage;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category= "Character | Movement | Rock Climbing")
-	class UAnimMontage* ClimbingMontage;
+	class UAnimMontage* UpClimbingMontage;
 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category= "Character | Movement | Rock Climbing")
+	class UAnimMontage* DownClimbingMontage;
+	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category= "Character | Movement | Rock Climbing")
 	float UpClimbingMontageTime = 2.0f;	
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category= "Character | Movement | Rock Climbing")
 	float DownClimbingMontageTime = 2.0f;	
 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category= "Character | Movement | Rock Climbing")
+	bool bIsDrawDebugUp = false;	
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category= "Character | Movement | Rock Climbing")
+	bool bIsDrawDebugDonw = false;	
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category= "Character | Movement | Rock Climbing")
+	float UpClimbingOffset = 50.0f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category= "Character | Movement | Rock Climbing")
+	float DownClimbingOffset = 50.0f;
+	
 	UPROPERTY()
 	ALedgePlatform* CurrentLedgeActor;
 	
